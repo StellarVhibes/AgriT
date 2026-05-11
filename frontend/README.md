@@ -1,6 +1,6 @@
-# IntentRemit Frontend 🎨
+# AgriTrust Frontend 🎨
 
-This directory contains the **Next.js** PWA frontend for IntentRemit — the Programmable Remittance with Purpose on Stellar.
+This directory contains the **Next.js** PWA frontend for AgriTrust Protocol — the programmable trust layer for smallholder farmers on Stellar.
 
 ## 📚 Documentation
 
@@ -17,11 +17,11 @@ npm run dev
 ## Features
 
 - Connect wallet via Freighter
-- Send USDC/XLM with goal selection
-- AI-powered allocation suggestions
-- Conditional split configuration
-- Growth Vault visualization with unlock timeline
-- Transaction history and tracking
+- Proof of Activity logging (Seed purchase, Planting, etc.)
+- VYC (Verifiable Yield Certificate) visualization
+- Real-time yield and weather-based forecasts
+- Instant liquidity request dashboard
+- Payout tracking in USDC/Stablecoins
 
 ---
 

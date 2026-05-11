@@ -2,13 +2,14 @@
 
 ## Our Pledge
 
-We pledge to make participation in the **IntentRemit** project a harassment-free experience for everyone, regardless of age, body size, disability, ethnicity, sex characteristics, gender identity and expression, level of experience, education, socio-economic status, nationality, personal appearance, race, religion, or sexual identity and orientation.
+We pledge to make participation in the **AgriTrust Protocol** project a harassment-free experience for everyone, regardless of age, body size, disability, ethnicity, sex characteristics, gender identity and expression, level of experience, education, socio-economic status, nationality, personal appearance, race, religion, or sexual identity and orientation.
 
-We are committed to building a **programmable remittance infrastructure** that promotes financial growth and stability for families in emerging markets.
+We are committed to building the **infrastructure of trust** that allows the world's most underrepresented workforce to prove their value to the global financial system, bridging the gap between the soil and the stablecoin.
 
 ## Our Standards
 
 Examples of behavior that contributes to creating a positive environment include:
+
 - Using welcoming and inclusive language.
 - Being respectful of differing viewpoints and experiences.
 - Gracefully accepting constructive criticism.
@@ -27,4 +28,4 @@ This Code of Conduct is adapted from the [Contributor Covenant][homepage], versi
 
 ---
 
-*IntentRemit — Programmable Remittance with Purpose on Stellar*
+_AgriTrust Protocol — The programmable trust layer for smallholder farmers on Stellar_

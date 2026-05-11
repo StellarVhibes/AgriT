@@ -1,12 +1,12 @@
-# Contributing to IntentRemit
+# Contributing to AgriTrust Protocol
 
-Thank you for your interest in building the future of programmable remittances on Stellar! This guide will help you contribute effectively.
+Thank you for your interest in building the programmable trust layer for smallholder farmers on Stellar! This guide will help you contribute effectively.
 
 ## 🛠 Tech Stack
 
 - **Smart Contracts:** Soroban (Rust)
 - **Frontend:** Next.js, TypeScript, Tailwind CSS, Freighter Wallet
-- **Backend:** Node.js, rule-based allocation engine
+- **Backend:** Node.js, rule-based credit scoring engine
 - **Data:** Stellar SDK, Horizon API
 
 ## 📝 Commit Guidelines
@@ -22,9 +22,9 @@ We follow a **Modular Commit** philosophy to ensure history is readable and reve
 
 ### Example Commit Messages
 
-- `feat(frontend): add goal selection flow`
-- `fix(contract): correct time-lock validation`
-- `docs: update vault configuration guide`
+- `feat(frontend): add VYC certificate visualization`
+- `fix(contract): correct yield calculation precision`
+- `docs: update VYC generation guide`
 - `chore: update dependencies`
 
 ## 📋 Issue Tracking
@@ -34,7 +34,7 @@ We follow a **Modular Commit** philosophy to ensure history is readable and reve
 3. **When Completed:** You MUST update the issue file with:
    - Check the box `[x]`
    - Append your GitHub username and Date/Time.
-   - *Example:* `- [x] Implement goal selection (@bbkenny - 2024-04-13 14:00)`
+   - *Example:* `- [x] Implement VYC generation (@bbkenny - 2024-04-13 14:00)`
 
 ## 🧪 Development Workflow
 
@@ -51,4 +51,4 @@ Read the **Integration Guides** located in the `docs/` directory for detailed se
 
 ---
 
-*Help us transform remittances from consumption to growth!*
+*Help us build the infrastructure of trust between the soil and the stablecoin!*

@@ -1,4 +1,4 @@
-# Maintainers - IntentRemit
+# Maintainers - AgriTrust Protocol
 
 The current maintainers of this project are:
 
@@ -13,4 +13,4 @@ Maintainers are responsible for:
 
 ---
 
-*IntentRemit — Programmable Remittance with Purpose on Stellar*
+*AgriTrust Protocol — The programmable trust layer for smallholder farmers on Stellar*

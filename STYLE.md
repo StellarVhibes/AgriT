@@ -1,4 +1,4 @@
-# Code Style Guide - IntentRemit
+# Code Style Guide - AgriTrust Protocol
 
 ## JavaScript / TypeScript (Frontend & Backend)
 
@@ -15,7 +15,7 @@
 - **Formatting:** Always run `cargo fmt`
 - **Errors:** Use `Result<T, E>` for error handling
 - **Safety:** Always use the `Env` object for authorization
-- **Time Handling:** Be careful with timestamp comparisons for vault locks
+- **Time Handling:** Be careful with timestamp comparisons for yield calculation
 - **Testing:** Write unit tests for each function
 
 ## Project Conventions
