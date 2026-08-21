@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { WalletButton } from "./WalletButton";
 
 const links = [
   { href: "/", label: "Home" },
@@ -34,6 +35,7 @@ export function SiteHeader() {
             </Link>
           ))}
         </nav>
+        <WalletButton />
       </div>
     </header>
   );
