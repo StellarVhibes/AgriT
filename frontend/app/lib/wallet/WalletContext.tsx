@@ -18,7 +18,9 @@ const WalletContext = createContext<WalletContextValue | undefined>(undefined);
 export function WalletProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(walletReducer, initialWalletState);
   const publicKeyRef = useRef<string | null>(null);
-  publicKeyRef.current = state.publicKey;
+  useEffect(() => {
+    publicKeyRef.current = state.publicKey;
+  }, [state.publicKey]);
 
   const loadBalance = useCallback(async (publicKey: string) => {
     dispatch({ type: "BALANCE_LOADING" });

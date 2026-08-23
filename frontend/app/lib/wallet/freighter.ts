@@ -1,4 +1,4 @@
-import { isConnected, requestAccess, getAddress } from "@stellar/freighter-api";
+import { isConnected, requestAccess, getPublicKey, setAllowed } from "@stellar/freighter-api";
 
 export class FreighterNotInstalledError extends Error {
   constructor() {
@@ -15,32 +15,36 @@ export class FreighterAccessDeniedError extends Error {
 }
 
 export async function isFreighterInstalled(): Promise<boolean> {
-  const result = await isConnected();
-  return !result.error;
+  return isConnected();
 }
 
 export async function connectFreighter(): Promise<string> {
-  const connected = await isConnected();
-  if (connected.error) {
+  const installed = await isConnected();
+  if (!installed) {
     throw new FreighterNotInstalledError();
   }
 
-  const access = await requestAccess();
-  if (access.error) {
-    throw new FreighterAccessDeniedError(access.error);
+  let address: string;
+  try {
+    address = await requestAccess();
+  } catch (err) {
+    throw new FreighterAccessDeniedError(err instanceof Error ? err.message : "Access denied");
   }
-  return access.address;
+
+  if (!address) {
+    throw new FreighterAccessDeniedError("Access denied");
+  }
+
+  await setAllowed();
+  return address;
 }
 
 export async function getFreighterAddress(): Promise<string | null> {
   const connected = await isConnected();
-  if (connected.error || !connected.isConnected) {
+  if (!connected) {
     return null;
   }
 
-  const result = await getAddress();
-  if (result.error || !result.address) {
-    return null;
-  }
-  return result.address;
+  const address = await getPublicKey();
+  return address || null;
 }
