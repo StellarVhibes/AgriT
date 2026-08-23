@@ -1,0 +1,30 @@
+
+> agritrust-frontend@0.1.0 build
+> next build
+
+▲ Next.js 16.3.0 (Turbopack)
+✓ Running next.config.mjs took 1095ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 13.3s
+  Running TypeScript ...
+  Finished TypeScript in 30.4s ...
+  Collecting page data using 8 workers ...
+  Generating static pages using 8 workers (0/7) ...
+  Generating static pages using 8 workers (1/7) 
+  Generating static pages using 8 workers (3/7) 
+  Generating static pages using 8 workers (5/7) 
+✓ Generating static pages using 8 workers (7/7) in 25.0s
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ○ /admin
+├ ○ /dashboard
+├ ○ /mint
+└ ○ /score
+
+
+○  (Static)  prerendered as static content
+
