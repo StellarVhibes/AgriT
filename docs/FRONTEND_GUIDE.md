@@ -58,8 +58,14 @@ soroban contract invoke \
 Once deployed, update `backend/.env.example` with the contract ID:
 
 ```env
-TESTNET_CONTRACT_ID=<deployed-contract-id>
+TESTNET_CONTRACT_ID=CD4WR3SGKTBCXDSNOWMAIYH6NZXICPD4EKOAGF6ZS6RCPEYZGKVDGOOV
 ```
+
+**Deployed Contract Details:**
+- Contract ID: `CD4WR3SGKTBCXDSNOWMAIYH6NZXICPD4EKOAGF6ZS6RCPEYZGKVDGOOV`
+- Deploy Transaction: `d7715e84e8e7a53c9bf6cc244688317e5267af106bad64d6e0abde32300765d9`
+- stellar.expert: https://stellar.expert/explorer/testnet/tx/d7715e84e8e7a53c9bf6cc244688317e5267af106bad64d6e0abde32300765d9
+- Stellar Lab: https://lab.stellar.org/r/testnet/contract/CD4WR3SGKTBCXDSNOWMAIYH6NZXICPD4EKOAGF6ZS6RCPEYZGKVDGOOV
 
 ### Verify Deployment
 
