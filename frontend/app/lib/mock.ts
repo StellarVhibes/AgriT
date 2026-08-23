@@ -70,8 +70,9 @@ export function formatYield(microUsdc: number): string {
   return `$${(microUsdc / 1_000_000).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 }
 
-export function formatDate(unixSeconds: number): string {
-  return new Date(unixSeconds * 1000).toLocaleDateString("en-US", {
+export function formatDate(unixSeconds: number | bigint): string {
+  const seconds = typeof unixSeconds === 'bigint' ? Number(unixSeconds) : unixSeconds;
+  return new Date(seconds * 1000).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
