@@ -1,0 +1,14 @@
+
+> agritrust-frontend@0.1.0 test
+> vitest run
+
+
+ RUN  v3.2.7 /mnt/c/Users/CarlosIsraelJiménezJ/Documents/Stellar/AgriT/frontend
+
+ ✓ app/__tests__/mint.test.ts (7 tests) 11ms
+
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+   Start at  21:40:50
+   Duration  7.84s (transform 456ms, setup 0ms, collect 654ms, tests 11ms, environment 0ms, prepare 2.51s)
+
