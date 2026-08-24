@@ -51,6 +51,8 @@ export interface ScoreResult {
   /** SHA-256 over the canonical activity series — matching what is stored on-chain. */
   activityHash: string;
   timestamp: number;
+  /** Expected harvest value in USDC-equivalent units, derived from the activity events. */
+  expectedHarvestValue: number;
 }
 
 export interface MintVycRequest {

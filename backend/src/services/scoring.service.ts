@@ -70,6 +70,7 @@ export function computeAgriTrustScore(
       explanation: 'No verified activity in the last 180 days.',
       activityHash,
       timestamp: now,
+      expectedHarvestValue: 0,
     };
   }
 
@@ -89,6 +90,18 @@ export function computeAgriTrustScore(
   const totalWeighted = valid.reduce((sum, a) => sum + (weights[a.type] ?? 0) * a.amount, 0);
   const volume = clamp(Math.round(totalWeighted), 0, 100);
 
+  const harvestAmount = valid
+    .filter((a) => a.type === 'harvest_log')
+    .reduce((sum, a) => sum + a.amount, 0);
+  const plantingAmount = valid
+    .filter((a) => a.type === 'planting')
+    .reduce((sum, a) => sum + a.amount, 0);
+  const expectedHarvestValue = harvestAmount > 0
+    ? harvestAmount
+    : plantingAmount > 0
+      ? Math.round(plantingAmount * 1.5)
+      : 0;
+
   const base = 30;
   const score = clamp(
     Math.round(base + consistency * 0.3 + recency * 0.25 + diversity * 0.2 + volume * 0.25),
@@ -105,5 +118,6 @@ export function computeAgriTrustScore(
     explanation: `Score ${score}/100 from ${valid.length} verified activit${valid.length === 1 ? 'y' : 'ies'} across ${Math.round(spanDays)} day(s), ${types} distinct type(s), last activity ${Math.round(daysSinceLast)} day(s) ago.`,
     activityHash,
     timestamp: now,
+    expectedHarvestValue,
   };
 }

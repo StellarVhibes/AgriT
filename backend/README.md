@@ -29,7 +29,7 @@ admin keypair to auth those calls — so this service:
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET    | `/health` | Health check |
-| POST   | `/score` | Compute 0-100 credit score + `activity_hash` from activities |
+| POST   | `/score` | Compute 0-100 credit score + `activity_hash` + `expectedHarvestValue` from activities |
 | GET    | `/vyc/:id?source=` | VYC record by id (on-chain read) |
 | GET    | `/vyc/count?source=` | Total VYCs minted (on-chain read) |
 | GET    | `/farmer/:account/vycs?source=` | VYC ids for a farmer (on-chain read) |
