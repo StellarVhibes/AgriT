@@ -8,14 +8,22 @@ import { ScoreRing, StatusBadge } from "../components/ui/Badges";
 import { SiteHeader } from "../components/SiteHeader";
 import { SiteFooter } from "../components/SiteFooter";
 import { MOCK_VYCS, SAMPLE_FARMER, formatDate, formatYield, shortAddress } from "../lib/mock";
-import { useFreighter } from "../hooks/useFreighter";
 import { getFarmerVycs, getVyc, VycRecord as SorobanVycRecord } from "../services/soroban";
+import { ActivityFeed } from "../components/ActivityFeed";
+import { useContractEvents } from "../hooks/useContractEvents";
+import { useWallet } from "../lib/wallet/WalletContext";
 
 export default function Dashboard() {
-  const { address, isConnected, connect } = useFreighter();
+  const { publicKey: address, status, connect, refreshBalance } = useWallet();
+  const isConnected = status === "connected";
   const [vycs, setVycs] = useState<typeof MOCK_VYCS>(MOCK_VYCS);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [refreshToken, setRefreshToken] = useState(0);
+  const activity = useContractEvents(address, () => {
+    setRefreshToken((value) => value + 1);
+    void refreshBalance();
+  });
 
   // Fetch real VYCs when wallet is connected
   useEffect(() => {
@@ -74,7 +82,7 @@ export default function Dashboard() {
     }
 
     fetchVycs();
-  }, [isConnected, address]);
+  }, [isConnected, address, refreshToken]);
 
   const active = vycs.filter((v) => v.status === "Active");
   const activeValue = active.reduce((sum, v) => sum + v.expectedYield, 0);
@@ -198,6 +206,7 @@ export default function Dashboard() {
           </Card>
 
           <div className="space-y-6">
+            <ActivityFeed {...activity} onMarkRead={activity.markRead} />
             <Card>
               <CardHeader
                 title="Current trust position"
