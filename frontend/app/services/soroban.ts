@@ -12,6 +12,7 @@ import {
   xdr,
 } from "@stellar/stellar-sdk";
 import { signTransaction } from "@stellar/freighter-api";
+import type { TransactionStatus } from "../hooks/useTransactionStatus";
 
 // Environment configuration
 export const SOROBAN_CONFIG = {
@@ -50,6 +51,25 @@ export interface MintResult {
   vycId?: string;
   txHash?: string;
   error?: string;
+}
+
+export interface TransactionLifecycle {
+  onStatus?: (status: Exclude<TransactionStatus, "idle" | "success" | "failed">) => void;
+}
+
+function getTransactionError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  const normalizedMessage = message.toLowerCase();
+
+  if (normalizedMessage.includes("reject") || normalizedMessage.includes("declin") || normalizedMessage.includes("cancel")) {
+    return "Transaction rejected by wallet. Please approve the request and try again.";
+  }
+
+  if (normalizedMessage.includes("insufficient") || normalizedMessage.includes("underfunded")) {
+    return "Insufficient balance to submit this transaction. Fund your wallet and try again.";
+  }
+
+  return message || "Unable to mint the certificate. Please try again.";
 }
 
 export interface QueryResult {
@@ -96,8 +116,11 @@ async function buildTransaction(
  * Mint a new Verifiable Yield Certificate
  * This function requires admin authorization
  */
-export async function mintVyc(params: MintVycParams): Promise<MintResult> {
+export async function mintVyc(params: MintVycParams, lifecycle: TransactionLifecycle = {}): Promise<MintResult> {
+  let txHash: string | undefined;
+
   try {
+    lifecycle.onStatus?.("pending");
     const {
       adminAddress,
       farmerAddress,
@@ -151,6 +174,7 @@ export async function mintVyc(params: MintVycParams): Promise<MintResult> {
     );
 
     // Sign the transaction using Freighter
+    lifecycle.onStatus?.("signing");
     const signedXdr = await signTransaction(preparedTx.toXDR(), {
       networkPassphrase: SOROBAN_CONFIG.NETWORK_PASSPHRASE,
       accountToSign: adminAddress,
@@ -160,7 +184,9 @@ export async function mintVyc(params: MintVycParams): Promise<MintResult> {
     const server = getSorobanServer();
     const tx = TransactionBuilder.fromXDR(signedXdr, SOROBAN_CONFIG.NETWORK_PASSPHRASE);
 
+    lifecycle.onStatus?.("submitting");
     const sendResponse = await server.sendTransaction(tx);
+    txHash = sendResponse.hash;
 
     // Poll for the result
     if (sendResponse.status === "PENDING") {
@@ -190,6 +216,7 @@ export async function mintVyc(params: MintVycParams): Promise<MintResult> {
         return {
           success: false,
           error: `Transaction failed with status: ${getResponse.status}`,
+          txHash,
         };
       }
     }
@@ -197,12 +224,14 @@ export async function mintVyc(params: MintVycParams): Promise<MintResult> {
     return {
       success: false,
       error: "Transaction submission failed",
+      txHash,
     };
   } catch (error) {
     console.error("Error minting VYC:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to mint VYC. Please try again.",
+      error: getTransactionError(error),
+      txHash,
     };
   }
 }
