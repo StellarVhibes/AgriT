@@ -14,6 +14,79 @@ To build a robust Stellar dApp, you'll typically use:
 
 ---
 
+## 1.5 Contract Deployment 🚀
+
+The AgriTrust VYC contract must be deployed to Stellar testnet before frontend integration.
+
+### Deploy the Contract
+
+```bash
+cd smartcontract
+make deploy-testnet
+```
+
+Or manually:
+
+```bash
+# Build the contract
+cargo build --target wasm32-unknown-unknown --release
+
+# Deploy to testnet (requires soroban-cli and funded testnet identity)
+soroban contract deploy \
+    --wasm target/wasm32-unknown-unknown/release/agritrust_vyc.wasm \
+    --source <your-identity> \
+    --network testnet
+```
+
+### Initialize the Contract
+
+After deployment, initialize with admin and oracle addresses:
+
+```bash
+soroban contract invoke \
+    --id <CONTRACT_ID> \
+    --source <admin> \
+    --network testnet \
+    -- \
+    init \
+    --admin <admin-address> \
+    --oracle <oracle-address>
+```
+
+### Update Environment Variables
+
+Once deployed, update `backend/.env.example` with the contract ID:
+
+```env
+TESTNET_CONTRACT_ID=CD4WR3SGKTBCXDSNOWMAIYH6NZXICPD4EKOAGF6ZS6RCPEYZGKVDGOOV
+```
+
+**Deployed Contract Details:**
+- Contract ID: `CD4WR3SGKTBCXDSNOWMAIYH6NZXICPD4EKOAGF6ZS6RCPEYZGKVDGOOV`
+- Deploy Transaction: `d7715e84e8e7a53c9bf6cc244688317e5267af106bad64d6e0abde32300765d9`
+- stellar.expert: https://stellar.expert/explorer/testnet/tx/d7715e84e8e7a53c9bf6cc244688317e5267af106bad64d6e0abde32300765d9
+- Stellar Lab: https://lab.stellar.org/r/testnet/contract/CD4WR3SGKTBCXDSNOWMAIYH6NZXICPD4EKOAGF6ZS6RCPEYZGKVDGOOV
+
+### Verify Deployment
+
+```bash
+# Check admin
+soroban contract invoke \
+    --id <CONTRACT_ID> \
+    --network testnet \
+    -- \
+    get_admin
+
+# Check VYC count
+soroban contract invoke \
+    --id <CONTRACT_ID> \
+    --network testnet \
+    -- \
+    get_vyc_count
+```
+
+---
+
 ## 2. Installation 📦
 
 Add the necessary packages to your project:
