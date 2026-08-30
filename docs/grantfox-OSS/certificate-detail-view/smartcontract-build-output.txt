@@ -1,0 +1,3 @@
+$ cd smartcontract && cargo build --target wasm32-unknown-unknown --release
+   Compiling agritrust_vyc v0.1.0 (C:\Users\hp\OneDrive\Desktop\GrantFox\AgriT\smartcontract\contracts\volatility_shield)
+    Finished `release` profile [optimized] target(s) in 3.08s

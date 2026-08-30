@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Plus, Loader2, Sprout, Shield, TrendingUp } from "lucide-react";
+import { Plus, Loader2, Sprout, Shield, TrendingUp, ChevronRight } from "lucide-react";
 import { Card, CardHeader } from "../components/ui/Card";
 import { ScoreRing, StatusBadge } from "../components/ui/Badges";
 import { SiteHeader } from "../components/SiteHeader";
@@ -206,26 +206,35 @@ export default function Dashboard() {
                 ) : (
                   <div className="divide-y divide-border">
                     {vycs.map((vyc) => (
-                    <div
-                      key={vyc.id}
-                      className="flex flex-wrap items-center gap-4 px-6 py-4 transition-colors hover:bg-muted/30"
-                    >
-                      <ScoreRing score={vyc.score} />
-                      <div className="min-w-0 flex-1">
-                        <p className="font-semibold">
-                          VYC #{vyc.id} · {vyc.crop}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {vyc.region} · expected yield {formatYield(vyc.expectedYield)} · minted{" "}
-                          {formatDate(vyc.createdAt)}
-                        </p>
-                        <p className="mt-1 truncate font-mono text-xs text-muted-foreground">
-                          {vyc.activityHash}
-                        </p>
-                      </div>
-                      <StatusBadge status={vyc.status} />
-                    </div>
-                  ))}
+                      <Link
+                        key={vyc.id}
+                        href={`/certificates/${vyc.id}`}
+                        className="group flex flex-wrap items-center gap-4 px-6 py-4 transition-colors hover:bg-muted/40 cursor-pointer block"
+                      >
+                        <ScoreRing score={vyc.score} />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="font-semibold text-foreground group-hover:text-primary transition-colors">
+                              VYC #{vyc.id} · {vyc.crop}
+                            </p>
+                            <span className="text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+                              View details →
+                            </span>
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            {vyc.region} · expected yield {formatYield(vyc.expectedYield)} · minted{" "}
+                            {formatDate(vyc.createdAt)}
+                          </p>
+                          <p className="mt-1 truncate font-mono text-xs text-muted-foreground">
+                            {vyc.activityHash}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <StatusBadge status={vyc.status} />
+                          <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+                        </div>
+                      </Link>
+                    ))}
                   </div>
                 )}
               </Card>
