@@ -10,9 +10,11 @@ import {
   nativeToScVal,
   scValToNative,
   xdr,
+  StrKey,
 } from "@stellar/stellar-sdk";
 import { signTransaction } from "@stellar/freighter-api";
 import type { TransactionStatus } from "../hooks/useTransactionStatus";
+import { mapVycStatus } from "../lib/vyc";
 
 // Environment configuration
 export const SOROBAN_CONFIG = {
@@ -22,6 +24,15 @@ export const SOROBAN_CONFIG = {
     : Networks.TESTNET,
   CONTRACT_ID: process.env.NEXT_PUBLIC_VYC_CONTRACT_ID || "",
 };
+
+export function isValidContractId(contractId?: string): boolean {
+  if (!contractId || typeof contractId !== "string") return false;
+  try {
+    return StrKey.isValidContract(contractId.trim());
+  } catch {
+    return false;
+  }
+}
 
 export interface MintVycParams {
   adminAddress: string;
@@ -100,6 +111,9 @@ async function buildTransaction(
   method: string,
   params: xdr.ScVal[]
 ): Promise<ReturnType<rpc.Server["prepareTransaction"]>> {
+  if (!isValidContractId(contractId)) {
+    throw new Error("Contract ID is not configured or invalid. Please set NEXT_PUBLIC_VYC_CONTRACT_ID.");
+  }
   const server = getSorobanServer();
   const sourceAccount = await server.getAccount(publicKey);
 
@@ -116,6 +130,54 @@ async function buildTransaction(
   return await server.prepareTransaction(transaction);
 }
 
+function validateMintParams(params: MintVycParams): string | null {
+  if (!params.adminAddress || !params.farmerAddress) {
+    return "Invalid addresses";
+  }
+  if (params.score < 0 || params.score > 100) {
+    return "Score must be between 0 and 100";
+  }
+  if (!params.expectedYield || BigInt(params.expectedYield) <= 0) {
+    return "Expected yield must be positive";
+  }
+  if (!params.crop || !params.region || !params.activityHash) {
+    return "Missing required fields";
+  }
+  return null;
+}
+
+function decodeMintReturnVal(returnValue: xdr.ScVal | undefined, txHash: string): MintResult {
+  if (!returnValue) {
+    return { success: false, error: "Contract returned an empty result", txHash };
+  }
+  const decoded = scValToNative(returnValue);
+  if (Array.isArray(decoded)) {
+    if (decoded[0] === "Ok") {
+      return { success: true, vycId: String(decoded[1]), txHash };
+    }
+    if (decoded[0] === "Err") {
+      return { success: false, error: `Mint rejected by contract: ${String(decoded[1])}`, txHash };
+    }
+  }
+  if (decoded !== undefined && decoded !== null) {
+    return { success: true, vycId: String(decoded), txHash };
+  }
+  return { success: false, error: "Contract returned an empty result", txHash };
+}
+
+async function pollTransactionResult(server: rpc.Server, hash: string): Promise<rpc.Api.GetTransactionResponse> {
+  const maxAttempts = 30;
+  let attempts = 0;
+  let getResponse = await server.getTransaction(hash);
+
+  while (getResponse.status === rpc.Api.GetTransactionStatus.NOT_FOUND && attempts < maxAttempts) {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    getResponse = await server.getTransaction(hash);
+    attempts++;
+  }
+  return getResponse;
+}
+
 /**
  * Mint a new Verifiable Yield Certificate
  * This function requires admin authorization
@@ -125,51 +187,26 @@ export async function mintVyc(params: MintVycParams, lifecycle: TransactionLifec
 
   try {
     lifecycle.onStatus?.("pending");
-    const {
-      adminAddress,
-      farmerAddress,
-      score,
-      expectedYield,
-      crop,
-      region,
-      activityHash,
-    } = params;
 
-    // Validate inputs
-    if (!adminAddress || !farmerAddress) {
-      return { success: false, error: "Invalid addresses" };
+    const validationError = validateMintParams(params);
+    if (validationError) {
+      return { success: false, error: validationError };
     }
 
-    if (score < 0 || score > 100) {
-      return { success: false, error: "Score must be between 0 and 100" };
-    }
-
-    if (!expectedYield || BigInt(expectedYield) <= 0) {
-      return { success: false, error: "Expected yield must be positive" };
-    }
-
-    if (!crop || !region || !activityHash) {
-      return { success: false, error: "Missing required fields" };
-    }
-
-    // Build the transaction parameters
-    // Convert expectedYield string to BigInt for i128 type
+    const { adminAddress, farmerAddress, score, expectedYield, crop, region, activityHash } = params;
     const yieldBigInt = BigInt(expectedYield);
-
-    // Soroban symbols cannot contain hyphens, convert to underscores
     const regionSymbol = region.replace(/-/g, "_");
 
     const contractParams = [
-      new Address(adminAddress).toScVal(), // admin
-      new Address(farmerAddress).toScVal(), // farmer
-      nativeToScVal(score, { type: "u32" }), // score
-      nativeToScVal(yieldBigInt, { type: "i128" }), // expected_yield
-      nativeToScVal(crop, { type: "symbol" }), // crop
-      nativeToScVal(regionSymbol, { type: "symbol" }), // region
-      nativeToScVal(activityHash, { type: "string" }), // activity_hash
+      new Address(adminAddress).toScVal(),
+      new Address(farmerAddress).toScVal(),
+      nativeToScVal(score, { type: "u32" }),
+      nativeToScVal(yieldBigInt, { type: "i128" }),
+      nativeToScVal(crop, { type: "symbol" }),
+      nativeToScVal(regionSymbol, { type: "symbol" }),
+      nativeToScVal(activityHash, { type: "string" }),
     ];
 
-    // Build and prepare the transaction
     const preparedTx = await buildTransaction(
       adminAddress,
       SOROBAN_CONFIG.CONTRACT_ID,
@@ -177,14 +214,12 @@ export async function mintVyc(params: MintVycParams, lifecycle: TransactionLifec
       contractParams
     );
 
-    // Sign the transaction using Freighter
     lifecycle.onStatus?.("signing");
     const signedXdr = await signTransaction(preparedTx.toXDR(), {
       networkPassphrase: SOROBAN_CONFIG.NETWORK_PASSPHRASE,
       accountToSign: adminAddress,
     });
 
-    // Submit the transaction
     const server = getSorobanServer();
     const tx = TransactionBuilder.fromXDR(signedXdr, SOROBAN_CONFIG.NETWORK_PASSPHRASE);
 
@@ -192,64 +227,17 @@ export async function mintVyc(params: MintVycParams, lifecycle: TransactionLifec
     const sendResponse = await server.sendTransaction(tx);
     txHash = sendResponse.hash;
 
-    // Poll for the result
     if (sendResponse.status === "PENDING") {
-      let getResponse = await server.getTransaction(sendResponse.hash);
-
-      // Poll every 1 second for up to 30 seconds
-      const maxAttempts = 30;
-      let attempts = 0;
-
-      while (getResponse.status === rpc.Api.GetTransactionStatus.NOT_FOUND && attempts < maxAttempts) {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        getResponse = await server.getTransaction(sendResponse.hash);
-        attempts++;
-      }
+      const getResponse = await pollTransactionResult(server, sendResponse.hash);
 
       if (getResponse.status === rpc.Api.GetTransactionStatus.SUCCESS) {
-        // mint_vyc now returns Result<u64, MintError>. Soroban serializes a
-        // Result as a two-element vector ["Ok", id] | ["Err", error], so the
-        // bare scValToNative(...).toString() of the old u64 path would yield
-        // garbage like "Ok,5". Unwrap the Result explicitly.
-        const decoded = scValToNative(getResponse.returnValue!);
-
-        if (Array.isArray(decoded) && decoded[0] === "Ok") {
-          return {
-            success: true,
-            vycId: String(decoded[1]),
-            txHash: sendResponse.hash,
-          };
-        }
-
-        if (Array.isArray(decoded) && decoded[0] === "Err") {
-          return {
-            success: false,
-            error: `Mint rejected by contract: ${String(decoded[1])}`,
-            txHash: sendResponse.hash,
-          };
-        }
-
-        // Fallback for a bare u64 return (pre-Result contract).
-        if (decoded !== undefined && decoded !== null) {
-          return {
-            success: true,
-            vycId: String(decoded),
-            txHash: sendResponse.hash,
-          };
-        }
-
-        return {
-          success: false,
-          error: "Contract returned an empty result",
-          txHash: sendResponse.hash,
-        };
-      } else {
-        return {
-          success: false,
-          error: `Transaction failed with status: ${getResponse.status}`,
-          txHash,
-        };
+        return decodeMintReturnVal(getResponse.returnValue, sendResponse.hash);
       }
+      return {
+        success: false,
+        error: `Transaction failed with status: ${getResponse.status}`,
+        txHash,
+      };
     }
 
     return {
@@ -272,6 +260,14 @@ export async function mintVyc(params: MintVycParams, lifecycle: TransactionLifec
  */
 export async function getVyc(vycId: string): Promise<QueryResult> {
   try {
+    if (!vycId || Number.isNaN(Number(vycId)) || Number(vycId) <= 0) {
+      return { success: false, error: "Invalid certificate ID" };
+    }
+
+    if (!isValidContractId(SOROBAN_CONFIG.CONTRACT_ID)) {
+      return { success: false, error: "Contract ID is not configured" };
+    }
+
     const server = getSorobanServer();
 
     // Use a dummy account for read-only queries
@@ -300,31 +296,27 @@ export async function getVyc(vycId: string): Promise<QueryResult> {
       const resultVal = simResponse.result.retval;
       const vycData = scValToNative(resultVal);
 
-      // Map status enum
-      const statusMap: Record<number, "Active" | "Redeemed" | "Expired" | "Cancelled"> = {
-        0: "Active",
-        1: "Redeemed",
-        2: "Expired",
-        3: "Cancelled",
-      };
+      if (!vycData) {
+        return { success: false, error: `Certificate #${vycId} was not found on-chain.` };
+      }
 
       const vyc: VycRecord = {
-        id: vycData.id.toString(),
-        farmer: vycData.farmer,
-        score: vycData.score,
-        expectedYield: vycData.expected_yield.toString(),
-        crop: vycData.crop,
-        region: vycData.region,
-        activityHash: vycData.activity_hash,
-        status: statusMap[vycData.status] || "Active",
-        createdAt: vycData.created_at,
-        updatedAt: vycData.updated_at,
+        id: vycData.id !== undefined ? vycData.id.toString() : String(vycId),
+        farmer: vycData.farmer || "",
+        score: Number(vycData.score || 0),
+        expectedYield: vycData.expected_yield !== undefined ? vycData.expected_yield.toString() : "0",
+        crop: String(vycData.crop || "UNKNOWN"),
+        region: String(vycData.region || ""),
+        activityHash: String(vycData.activity_hash || ""),
+        status: mapVycStatus(vycData.status),
+        createdAt: Number(vycData.created_at || 0),
+        updatedAt: Number(vycData.updated_at || 0),
       };
 
       return { success: true, data: vyc };
     }
 
-    return { success: false, error: "Failed to query VYC" };
+    return { success: false, error: `Failed to query certificate #${vycId}` };
   } catch (error) {
     console.error("Error querying VYC:", error);
     return {
@@ -339,6 +331,10 @@ export async function getVyc(vycId: string): Promise<QueryResult> {
  */
 export async function getFarmerVycs(farmerAddress: string): Promise<string[]> {
   try {
+    if (!isValidContractId(SOROBAN_CONFIG.CONTRACT_ID)) {
+      return [];
+    }
+
     const server = getSorobanServer();
 
     const dummyAccount = await server.getAccount(
@@ -380,6 +376,10 @@ export async function getFarmerVycs(farmerAddress: string): Promise<string[]> {
  */
 export async function getVycCount(): Promise<number> {
   try {
+    if (!isValidContractId(SOROBAN_CONFIG.CONTRACT_ID)) {
+      return 0;
+    }
+
     const server = getSorobanServer();
 
     const dummyAccount = await server.getAccount(

@@ -1,0 +1,19 @@
+$ cd frontend && npm test
+
+> agritrust-frontend@0.1.0 test
+> vitest run
+
+
+ RUN  v3.2.7 C:/Users/hp/OneDrive/Desktop/GrantFox/AgriT/frontend
+
+ ✓ app/__tests__/mint.test.ts (7 tests) 14ms
+ ✓ app/lib/wallet/walletReducer.test.ts (7 tests) 9ms
+ ✓ app/lib/wallet/horizon.test.ts (3 tests) 16ms
+ ✓ app/hooks/useTransactionStatus.test.ts (5 tests) 16ms
+ ✓ app/__tests__/certificate-detail.test.ts (16 tests) 111ms
+ ✓ app/services/events.test.ts (4 tests) 84ms
+
+ Test Files  6 passed (6)
+      Tests  42 passed (42)
+   Start at  18:40:42
+   Duration  2.57s (transform 670ms, setup 0ms, collect 2.26s, tests 250ms, environment 3ms, prepare 2.19s)

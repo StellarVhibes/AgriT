@@ -1,0 +1,17 @@
+$ cd backend && npm test
+
+> agritrust-backend@1.0.0 test
+> vitest run
+
+
+ RUN  v3.2.7 C:/Users/hp/OneDrive/Desktop/GrantFox/AgriT/backend
+
+ ✓ src/services/scoring.service.test.ts (9 tests) 10ms
+ ✓ src/routes/activity.routes.test.ts (14 tests) 5144ms
+   ✓ POST /activities (USSD activity logging) > accepts a valid event and answers with a compact body
+ ✓ src/routes/auth.routes.test.ts (20 tests) 204ms
+
+ Test Files  3 passed (3)
+      Tests  43 passed (43)
+   Start at  18:26:31
+   Duration  20.35s (transform 853ms, setup 0ms, collect 24.02s, tests 5.36s, environment 2ms, prepare 3.09s)

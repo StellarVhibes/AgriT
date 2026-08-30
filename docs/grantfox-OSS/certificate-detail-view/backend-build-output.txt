@@ -1,0 +1,10 @@
+$ cd backend && npm run typecheck && npm run build
+
+> agritrust-backend@1.0.0 typecheck
+> tsc --noEmit
+
+
+> agritrust-backend@1.0.0 build
+> tsc
+
+[Build completed with zero errors]

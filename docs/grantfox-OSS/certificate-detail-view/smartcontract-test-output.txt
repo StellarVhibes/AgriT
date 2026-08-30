@@ -1,0 +1,29 @@
+$ cd smartcontract && cargo test --all
+   Compiling agritrust_vyc v0.1.0 (C:\Users\hp\OneDrive\Desktop\GrantFox\AgriT\smartcontract\contracts\volatility_shield)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 8.08s
+     Running unittests src\lib.rs (target\debug\deps\agritrust_vyc-456dd87ac0df4481.exe)
+
+running 15 tests
+test test::test_get_nonexistent_vyc ... ok
+test test::test_metadata_reads ... ok
+test test::test_init ... ok
+test test::test_get_vyc_record ... ok
+test test::test_mint_accepts_valid_lowercase_hash ... ok
+test test::test_mint_rejects_uppercase_activity_hash ... ok
+test test::test_mint_rejects_non_hex_activity_hash ... ok
+test test::test_farmer_vyc_list ... ok
+test test::test_mint_rejects_short_activity_hash ... ok
+test test::test_get_vyc_count_increments ... ok
+test test::test_get_farmer_vyc_records_returns_full_records ... ok
+test test::test_mint_vyc_basic ... ok
+test test::test_transfer_admin ... ok
+test test::test_multiple_farmers_isolated ... ok
+test test::test_update_status_redeem ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.23s
+
+   Doc-tests agritrust_vyc
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

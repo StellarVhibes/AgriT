@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Card, CardHeader } from "../components/ui/Card";
 import { StatusBadge, ScoreRing } from "../components/ui/Badges";
 import { SiteHeader } from "../components/SiteHeader";
@@ -12,10 +13,10 @@ const crops = ["MAIZE", "COCOA", "SOYBEAN", "RICE", "CASSAVA"];
 const statuses = ["Active", "Redeemed", "Expired", "Cancelled"];
 
 const recentActivity = [
-  { action: "VYC #4 minted", farmer: "GCP...VKX4", time: "2 hours ago", status: "success" },
-  { action: "Evidence submitted", farmer: "GDQ...AB12", time: "5 hours ago", status: "pending" },
+  { action: "VYC #8 minted", vycId: 8, farmer: "GCP...VKX4", time: "2 hours ago", status: "success" },
+  { action: "Evidence submitted", vycId: 7, farmer: "GDQ...AB12", time: "5 hours ago", status: "pending" },
   { action: "KYC approved", farmer: "GCFG...3FM4", time: "1 day ago", status: "success" },
-  { action: "VYC #2 redeemed", farmer: "GCP...VKX4", time: "2 days ago", status: "info" },
+  { action: "VYC #7 redeemed", vycId: 7, farmer: "GCP...VKX4", time: "2 days ago", status: "info" },
 ];
 
 export default function Admin() {
@@ -129,7 +130,17 @@ export default function Admin() {
                     <tbody className="divide-y divide-border">
                       {MOCK_VYCS.map((vyc) => (
                         <tr key={vyc.id} className="hover:bg-muted/50 transition-colors">
-                          <td className="px-6 py-3 font-mono text-xs">{shortAddress(vyc.activityHash)}</td>
+                          <td className="px-6 py-3 font-mono text-xs">
+                            <Link
+                              href={`/certificates/${vyc.id}`}
+                              className="font-bold text-primary hover:underline flex items-center gap-1.5"
+                            >
+                              <span>VYC #{vyc.id}</span>
+                              <span className="text-[10px] text-muted-foreground font-normal">
+                                ({shortAddress(vyc.activityHash)})
+                              </span>
+                            </Link>
+                          </td>
                           <td className="px-6 py-3">{vyc.crop}</td>
                           <td className="px-6 py-3">{vyc.region}</td>
                           <td className="px-6 py-3">{formatYield(vyc.expectedYield)}</td>
@@ -137,7 +148,9 @@ export default function Admin() {
                             <ScoreRing score={vyc.score} />
                           </td>
                           <td className="px-6 py-3">
-                            <StatusBadge status={vyc.status} />
+                            <Link href={`/certificates/${vyc.id}`}>
+                              <StatusBadge status={vyc.status} />
+                            </Link>
                           </td>
                         </tr>
                       ))}
