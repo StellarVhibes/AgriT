@@ -416,3 +416,375 @@ fn test_mint_accepts_valid_lowercase_hash() {
     );
     assert_eq!(client.get_farmer_vyc_records(&farmer).len(), 1);
 }
+
+// ── Parametric Insurance Tests ──────────────────────────────────────────────
+
+#[test]
+fn test_report_condition() {
+    let (env, admin, contract_id) = setup();
+    env.mock_all_auths();
+
+    let client = AgriTrustClient::new(&env, &contract_id);
+    client.init(&admin);
+
+    let condition_id = client.report_condition(
+        &admin,
+        &ConditionType::Drought,
+        &symbol_short!("NGLA"),
+        &symbol_short!("2026_Q1"),
+        &75,
+    );
+
+    assert_eq!(condition_id, 1);
+
+    let cond = client.get_condition(&condition_id);
+    assert!(cond.is_some());
+    let cond = cond.unwrap();
+    assert_eq!(cond.condition, ConditionType::Drought);
+    assert_eq!(cond.region, symbol_short!("NGLA"));
+    assert_eq!(cond.season, symbol_short!("2026_Q1"));
+    assert_eq!(cond.severity, 75);
+    assert_eq!(cond.reported_by, admin);
+    assert!(cond.active);
+}
+
+#[test]
+fn test_report_condition_unauthorized() {
+    let (env, _admin, contract_id) = setup();
+    env.mock_all_auths();
+
+    let client = AgriTrustClient::new(&env, &contract_id);
+    client.init(&_admin);
+
+    let reporter = Address::generate(&env);
+    let res = client.try_report_condition(
+        &reporter,
+        &ConditionType::Drought,
+        &symbol_short!("NGLA"),
+        &symbol_short!("2026_Q1"),
+        &75,
+    );
+    assert!(matches!(res, Err(Ok(InsuranceError::Unauthorized))));
+}
+
+#[test]
+fn test_trigger_payout_drought_season() {
+    let (env, admin, contract_id) = setup();
+    env.mock_all_auths();
+
+    let client = AgriTrustClient::new(&env, &contract_id);
+    client.init(&admin);
+
+    let farmer = Address::generate(&env);
+    let vyc_id = client.mint_vyc(
+        &admin,
+        &farmer,
+        &75,
+        &100_000_000i128, // 100 USDC
+        &symbol_short!("MAIZE"),
+        &symbol_short!("NGLA"),
+        &dummy_hash(&env),
+    );
+
+    // Report drought in the same region with 60% severity.
+    let condition_id = client.report_condition(
+        &admin,
+        &ConditionType::Drought,
+        &symbol_short!("NGLA"),
+        &symbol_short!("2026_Q1"),
+        &60,
+    );
+
+    // Trigger payout.
+    let payout = client.trigger_insurance_payout(&admin, &vyc_id, &condition_id);
+    assert_eq!(payout.vyc_id, vyc_id);
+    assert_eq!(payout.condition_id, condition_id);
+    // 100 USDC * 60 / 100 = 60 USDC (60_000_000 micro-USDC)
+    assert_eq!(payout.payout_amount, 60_000_000i128);
+    assert!(!payout.claimed);
+
+    // Query payout.
+    let stored = client.get_vyc_payout(&vyc_id);
+    assert!(stored.is_some());
+    assert_eq!(stored.unwrap().payout_amount, 60_000_000i128);
+}
+
+#[test]
+fn test_trigger_payout_no_condition() {
+    let (env, admin, contract_id) = setup();
+    env.mock_all_auths();
+
+    let client = AgriTrustClient::new(&env, &contract_id);
+    client.init(&admin);
+
+    let farmer = Address::generate(&env);
+    let vyc_id = client.mint_vyc(
+        &admin,
+        &farmer,
+        &75,
+        &100_000_000i128,
+        &symbol_short!("MAIZE"),
+        &symbol_short!("NGLA"),
+        &dummy_hash(&env),
+    );
+
+    // No condition reported — trigger should fail.
+    let res = client.try_trigger_insurance_payout(&admin, &vyc_id, &999);
+    assert!(matches!(res, Err(Ok(InsuranceError::ConditionNotFound))));
+}
+
+#[test]
+fn test_trigger_payout_wrong_region() {
+    let (env, admin, contract_id) = setup();
+    env.mock_all_auths();
+
+    let client = AgriTrustClient::new(&env, &contract_id);
+    client.init(&admin);
+
+    let farmer = Address::generate(&env);
+    let vyc_id = client.mint_vyc(
+        &admin,
+        &farmer,
+        &75,
+        &100_000_000i128,
+        &symbol_short!("MAIZE"),
+        &symbol_short!("NGLA"),
+        &dummy_hash(&env),
+    );
+
+    // Condition in a different region.
+    let condition_id = client.report_condition(
+        &admin,
+        &ConditionType::Drought,
+        &symbol_short!("GHAA"),
+        &symbol_short!("2026_Q1"),
+        &80,
+    );
+
+    let res = client.try_trigger_insurance_payout(&admin, &vyc_id, &condition_id);
+    assert!(matches!(res, Err(Ok(InsuranceError::NoActiveCondition))));
+}
+
+#[test]
+fn test_trigger_payout_inactive_vyc() {
+    let (env, admin, contract_id) = setup();
+    env.mock_all_auths();
+
+    let client = AgriTrustClient::new(&env, &contract_id);
+    client.init(&admin);
+
+    let farmer = Address::generate(&env);
+    let vyc_id = client.mint_vyc(
+        &admin,
+        &farmer,
+        &75,
+        &100_000_000i128,
+        &symbol_short!("MAIZE"),
+        &symbol_short!("NGLA"),
+        &dummy_hash(&env),
+    );
+
+    // Mark VYC as Redeemed (no longer Active).
+    client.update_status(&admin, &vyc_id, &VycStatus::Redeemed);
+
+    let condition_id = client.report_condition(
+        &admin,
+        &ConditionType::Drought,
+        &symbol_short!("NGLA"),
+        &symbol_short!("2026_Q1"),
+        &80,
+    );
+
+    let res = client.try_trigger_insurance_payout(&admin, &vyc_id, &condition_id);
+    assert!(matches!(res, Err(Ok(InsuranceError::VycNotActive))));
+}
+
+#[test]
+fn test_deactivate_condition() {
+    let (env, admin, contract_id) = setup();
+    env.mock_all_auths();
+
+    let client = AgriTrustClient::new(&env, &contract_id);
+    client.init(&admin);
+
+    let condition_id = client.report_condition(
+        &admin,
+        &ConditionType::Drought,
+        &symbol_short!("NGLA"),
+        &symbol_short!("2026_Q1"),
+        &80,
+    );
+
+    client.deactivate_condition(&admin, &condition_id);
+
+    let cond = client.get_condition(&condition_id).unwrap();
+    assert!(!cond.active);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #11)")]
+fn test_deactivate_condition_unauthorized() {
+    let (env, admin, contract_id) = setup();
+    env.mock_all_auths();
+
+    let client = AgriTrustClient::new(&env, &contract_id);
+    client.init(&admin);
+
+    let condition_id = client.report_condition(
+        &admin,
+        &ConditionType::Drought,
+        &symbol_short!("NGLA"),
+        &symbol_short!("2026_Q1"),
+        &80,
+    );
+
+    let non_admin = Address::generate(&env);
+    client.deactivate_condition(&non_admin, &condition_id);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #16)")]
+fn test_deactivate_condition_not_found() {
+    let (env, admin, contract_id) = setup();
+    env.mock_all_auths();
+
+    let client = AgriTrustClient::new(&env, &contract_id);
+    client.init(&admin);
+
+    client.deactivate_condition(&admin, &999);
+}
+
+#[test]
+fn test_get_condition_query() {
+    let (env, admin, contract_id) = setup();
+    env.mock_all_auths();
+
+    let client = AgriTrustClient::new(&env, &contract_id);
+    client.init(&admin);
+
+    let id1 = client.report_condition(
+        &admin,
+        &ConditionType::Drought,
+        &symbol_short!("NGLA"),
+        &symbol_short!("2026_Q1"),
+        &60,
+    );
+    let id2 = client.report_condition(
+        &admin,
+        &ConditionType::Flood,
+        &symbol_short!("NGLA"),
+        &symbol_short!("2026_Q2"),
+        &40,
+    );
+    let id3 = client.report_condition(
+        &admin,
+        &ConditionType::Drought,
+        &symbol_short!("GHAA"),
+        &symbol_short!("2026_Q1"),
+        &90,
+    );
+
+    // Region NGLA should have 2 conditions, GHAA should have 1.
+    let nglas = client.get_region_conditions(&symbol_short!("NGLA"));
+    assert_eq!(nglas.len(), 2);
+    assert_eq!(nglas.get(0).unwrap(), id1);
+    assert_eq!(nglas.get(1).unwrap(), id2);
+
+    let ghaas = client.get_region_conditions(&symbol_short!("GHAA"));
+    assert_eq!(ghaas.len(), 1);
+    assert_eq!(ghaas.get(0).unwrap(), id3);
+
+    // Unknown region returns empty.
+    let unknown = client.get_region_conditions(&symbol_short!("XYZ"));
+    assert_eq!(unknown.len(), 0);
+}
+
+#[test]
+fn test_normal_season_no_payout() {
+    let (env, admin, contract_id) = setup();
+    env.mock_all_auths();
+
+    let client = AgriTrustClient::new(&env, &contract_id);
+    client.init(&admin);
+
+    let farmer = Address::generate(&env);
+    let vyc_id = client.mint_vyc(
+        &admin,
+        &farmer,
+        &80,
+        &200_000_000i128,
+        &symbol_short!("MAIZE"),
+        &symbol_short!("NGLA"),
+        &dummy_hash(&env),
+    );
+
+    // No condition reported — eligibility check returns None.
+    let result = client.check_insurance_eligibility(&vyc_id);
+    assert!(result.is_none());
+}
+
+#[test]
+fn test_severity_affects_payout() {
+    let (env, admin, contract_id) = setup();
+    env.mock_all_auths();
+
+    let client = AgriTrustClient::new(&env, &contract_id);
+    client.init(&admin);
+
+    let farmer_a = Address::generate(&env);
+    let farmer_b = Address::generate(&env);
+
+    // Both VYCs in the same region, same expected yield.
+    let vyc_a = client.mint_vyc(
+        &admin,
+        &farmer_a,
+        &70,
+        &100_000_000i128,
+        &symbol_short!("MAIZE"),
+        &symbol_short!("NGLA"),
+        &dummy_hash(&env),
+    );
+    let vyc_b = client.mint_vyc(
+        &admin,
+        &farmer_b,
+        &75,
+        &100_000_000i128,
+        &symbol_short!("MAIZE"),
+        &symbol_short!("NGLA"),
+        &dummy_hash(&env),
+    );
+
+    // Condition with 30% severity.
+    let cond_low = client.report_condition(
+        &admin,
+        &ConditionType::Drought,
+        &symbol_short!("NGLA"),
+        &symbol_short!("2026_Q1"),
+        &30,
+    );
+
+    // Eligibility for VYC A with the low-severity condition.
+    let payout_a = client.check_insurance_eligibility(&vyc_a);
+    assert!(payout_a.is_some());
+    assert_eq!(payout_a.unwrap().payout_amount, 30_000_000i128); // 100M * 30 / 100
+
+    // Trigger payout for VYC A.
+    let triggered = client.trigger_insurance_payout(&admin, &vyc_a, &cond_low);
+    assert_eq!(triggered.vyc_id, vyc_a);
+
+    // Now report a more severe condition (80%).
+    let cond_high = client.report_condition(
+        &admin,
+        &ConditionType::Drought,
+        &symbol_short!("NGLA"),
+        &symbol_short!("2026_Q1"),
+        &80,
+    );
+
+    // Eligibility for VYC B should use the higher severity (80 > 30).
+    let payout_b = client.check_insurance_eligibility(&vyc_b);
+    assert!(payout_b.is_some());
+    let payout_b = payout_b.unwrap();
+    assert_eq!(payout_b.payout_amount, 80_000_000i128); // 100M * 80 / 100
+    assert_eq!(payout_b.condition_id, cond_high);
+}

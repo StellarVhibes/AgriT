@@ -2,6 +2,10 @@ export type VycStatus = 'Active' | 'Redeemed' | 'Expired' | 'Cancelled';
 
 export const VYC_STATUSES: VycStatus[] = ['Active', 'Redeemed', 'Expired', 'Cancelled'];
 
+export type ConditionType = 'Drought' | 'Flood' | 'Heatwave' | 'Frost';
+
+export const CONDITION_TYPES: ConditionType[] = ['Drought', 'Flood', 'Heatwave', 'Frost'];
+
 /**
  * Mirror of the on-chain `VycRecord` struct in the AgriTrust
  * `volatility_shield` contract. Quantities decode from Soroban i128/u64 as
@@ -99,4 +103,31 @@ export interface DecodedContractEvent {
   successful: boolean;
   topic: unknown[];
   value: unknown;
+}
+
+/**
+ * Mirror of the on-chain `SeasonCondition` struct.
+ * Represents a reported weather event that can trigger insurance payouts.
+ */
+export interface SeasonCondition {
+  conditionId: number;
+  conditionType: ConditionType;
+  region: string;
+  season: string;
+  severity: number; // 0–100
+  reportedBy: string;
+  reportedAt: number;
+  active: boolean;
+}
+
+/**
+ * Mirror of the on-chain `InsurancePayout` struct.
+ * Records an insurance payout triggered for a VYC.
+ */
+export interface InsurancePayout {
+  vycId: number;
+  conditionId: number;
+  payoutAmount: number; // micro-USDC
+  triggeredAt: number;
+  claimed: boolean;
 }

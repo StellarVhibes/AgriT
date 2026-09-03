@@ -9,8 +9,12 @@ use soroban_sdk::{
 pub enum DataKey {
     Admin,
     VycCounter,
-    Vyc(u64),            // VYC id → VycRecord
-    FarmerVycs(Address), // farmer address → Vec<u64> (their VYC ids)
+    Vyc(u64),                 // VYC id → VycRecord
+    FarmerVycs(Address),      // farmer address → Vec<u64> (their VYC ids)
+    ConditionCounter,         // global condition id counter
+    SeasonCondition(u64),     // condition_id → SeasonCondition
+    RegionConditions(Symbol), // region → Vec<u64> (condition ids for that region)
+    VycInsurancePayout(u64),  // vyc_id → InsurancePayout
 }
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -61,6 +65,63 @@ pub enum MintError {
     ScoreOutOfRange = 3,
     InvalidYield = 4,
     InvalidActivityHash = 5,
+}
+
+// ─── Parametric Insurance Types ─────────────────────────────────────────────
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[contracttype]
+pub enum ConditionType {
+    Drought,
+    Flood,
+    Heatwave,
+    Frost,
+}
+
+/// A season-level weather condition reported by an authorized oracle/admin.
+/// When active, VYCs in the matching region become eligible for partial payout.
+#[contracttype]
+pub struct SeasonCondition {
+    pub condition: ConditionType,
+    pub region: Symbol,
+    pub season: Symbol,
+    pub severity: u32, // 0–100
+    pub reported_by: Address,
+    pub reported_at: u64,
+    pub active: bool,
+}
+
+/// Record of an insurance payout triggered for a VYC.
+#[contracttype]
+pub struct InsurancePayout {
+    pub vyc_id: u64,
+    pub condition_id: u64,
+    pub payout_amount: i128, // micro-USDC
+    pub triggered_at: u64,
+    pub claimed: bool,
+}
+
+/// Errors returned by insurance operations.
+#[contracterror]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[repr(u32)]
+pub enum InsuranceError {
+    NotInitialized = 10,
+    Unauthorized = 11,
+    VycNotActive = 12,
+    NoActiveCondition = 13,
+    SeverityTooLow = 14,
+    AlreadyTriggered = 15,
+    ConditionNotFound = 16,
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/// Deterministic payout: expected_yield * severity / 100.
+/// Both `check_insurance_eligibility` and `trigger_insurance_payout` use this
+/// formula; keeping it in one place avoids subtle drift.
+fn compute_payout(expected_yield: i128, severity: u32) -> i128 {
+    expected_yield * (severity as i128) / 100
 }
 
 // ─── Contract ────────────────────────────────────────────────────────────────
@@ -294,6 +355,270 @@ impl AgriTrust {
         // Emit a status-change event for liquidity providers and insurance oracles.
         env.events()
             .publish((Symbol::new(&env, "vyc_status"), id), (new_status, now));
+    }
+
+    // ── Parametric Insurance ──────────────────────────────────────────────
+
+    /// Report a season-level weather condition (e.g. drought) for a region.
+    /// Only admin can report. Returns the new condition id.
+    pub fn report_condition(
+        env: Env,
+        admin: Address,
+        condition: ConditionType,
+        region: Symbol,
+        season: Symbol,
+        severity: u32,
+    ) -> Result<u64, InsuranceError> {
+        admin.require_auth();
+
+        let stored_admin: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::Admin)
+            .ok_or(InsuranceError::NotInitialized)?;
+
+        if admin != stored_admin {
+            return Err(InsuranceError::Unauthorized);
+        }
+
+        if severity == 0 || severity > 100 {
+            return Err(InsuranceError::SeverityTooLow);
+        }
+
+        let id: u64 = env
+            .storage()
+            .instance()
+            .get(&DataKey::ConditionCounter)
+            .unwrap_or(0u64);
+        let new_id = id + 1;
+        env.storage()
+            .instance()
+            .set(&DataKey::ConditionCounter, &new_id);
+
+        let now = env.ledger().timestamp();
+
+        let condition_record = SeasonCondition {
+            condition,
+            region: region.clone(),
+            season: season.clone(),
+            severity,
+            reported_by: admin.clone(),
+            reported_at: now,
+            active: true,
+        };
+
+        env.storage()
+            .persistent()
+            .set(&DataKey::SeasonCondition(new_id), &condition_record);
+
+        // Append condition id to the region's list.
+        let mut region_conditions: Vec<u64> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::RegionConditions(region.clone()))
+            .unwrap_or_else(|| Vec::new(&env));
+        region_conditions.push_back(new_id);
+        env.storage().persistent().set(
+            &DataKey::RegionConditions(region.clone()),
+            &region_conditions,
+        );
+
+        // Emit event for off-chain tracking.
+        env.events().publish(
+            (Symbol::new(&env, "condition_reported"), new_id),
+            (condition, region, season, severity, now),
+        );
+
+        Ok(new_id)
+    }
+
+    /// Deactivate a season condition so it can no longer trigger payouts.
+    pub fn deactivate_condition(
+        env: Env,
+        admin: Address,
+        condition_id: u64,
+    ) -> Result<(), InsuranceError> {
+        admin.require_auth();
+
+        let stored_admin: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::Admin)
+            .ok_or(InsuranceError::NotInitialized)?;
+
+        if admin != stored_admin {
+            return Err(InsuranceError::Unauthorized);
+        }
+
+        let mut cond: SeasonCondition = env
+            .storage()
+            .persistent()
+            .get(&DataKey::SeasonCondition(condition_id))
+            .ok_or(InsuranceError::ConditionNotFound)?;
+
+        cond.active = false;
+        env.storage()
+            .persistent()
+            .set(&DataKey::SeasonCondition(condition_id), &cond);
+
+        Ok(())
+    }
+
+    /// Read a condition by id.
+    pub fn get_condition(env: Env, condition_id: u64) -> Option<SeasonCondition> {
+        env.storage()
+            .persistent()
+            .get(&DataKey::SeasonCondition(condition_id))
+    }
+
+    /// All condition ids for a given region.
+    pub fn get_region_conditions(env: Env, region: Symbol) -> Vec<u64> {
+        env.storage()
+            .persistent()
+            .get(&DataKey::RegionConditions(region))
+            .unwrap_or_else(|| Vec::new(&env))
+    }
+
+    /// Deterministic payout eligibility check.
+    ///
+    /// Returns `Some(InsurancePayout)` if:
+    ///   - The VYC is `Active`
+    ///   - There is an active `SeasonCondition` for the VYC's region
+    ///   - Severity > 0
+    ///
+    /// Payout amount = `expected_yield * severity / 100`.
+    pub fn check_insurance_eligibility(env: Env, vyc_id: u64) -> Option<InsurancePayout> {
+        let vyc: VycRecord = env.storage().persistent().get(&DataKey::Vyc(vyc_id))?;
+
+        if vyc.status != VycStatus::Active {
+            return None;
+        }
+
+        // Find the most severe active condition for this VYC's region.
+        let condition_ids: Vec<u64> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::RegionConditions(vyc.region))
+            .unwrap_or_else(|| Vec::new(&env));
+
+        let mut best_severity: u32 = 0;
+        let mut best_condition_id: u64 = 0;
+
+        for cid in condition_ids.iter() {
+            if let Some(cond) = env
+                .storage()
+                .persistent()
+                .get::<DataKey, SeasonCondition>(&DataKey::SeasonCondition(cid))
+            {
+                if cond.active && cond.severity > best_severity {
+                    best_severity = cond.severity;
+                    best_condition_id = cid;
+                }
+            }
+        }
+
+        if best_severity == 0 {
+            return None;
+        }
+
+        let payout_amount = compute_payout(vyc.expected_yield, best_severity);
+
+        Some(InsurancePayout {
+            vyc_id,
+            condition_id: best_condition_id,
+            payout_amount,
+            triggered_at: env.ledger().timestamp(),
+            claimed: false,
+        })
+    }
+
+    /// Trigger an insurance payout for a VYC.
+    ///
+    /// Admin-only. Validates eligibility deterministically, stores the payout
+    /// record, and emits an event for off-chain oracles/liquidity providers.
+    pub fn trigger_insurance_payout(
+        env: Env,
+        admin: Address,
+        vyc_id: u64,
+        condition_id: u64,
+    ) -> Result<InsurancePayout, InsuranceError> {
+        admin.require_auth();
+
+        let stored_admin: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::Admin)
+            .ok_or(InsuranceError::NotInitialized)?;
+
+        if admin != stored_admin {
+            return Err(InsuranceError::Unauthorized);
+        }
+
+        // VYC must exist and be Active.
+        let vyc: VycRecord = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Vyc(vyc_id))
+            .ok_or(InsuranceError::VycNotActive)?;
+
+        if vyc.status != VycStatus::Active {
+            return Err(InsuranceError::VycNotActive);
+        }
+
+        // Condition must exist and be active.
+        let cond: SeasonCondition = env
+            .storage()
+            .persistent()
+            .get(&DataKey::SeasonCondition(condition_id))
+            .ok_or(InsuranceError::ConditionNotFound)?;
+
+        if !cond.active {
+            return Err(InsuranceError::NoActiveCondition);
+        }
+
+        // Condition must be for the same region as the VYC.
+        if cond.region != vyc.region {
+            return Err(InsuranceError::NoActiveCondition);
+        }
+
+        // Must not already have a payout for this VYC.
+        let existing: Option<InsurancePayout> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::VycInsurancePayout(vyc_id));
+        if existing.is_some() {
+            return Err(InsuranceError::AlreadyTriggered);
+        }
+
+        let payout_amount = compute_payout(vyc.expected_yield, cond.severity);
+        let now = env.ledger().timestamp();
+
+        let payout = InsurancePayout {
+            vyc_id,
+            condition_id,
+            payout_amount,
+            triggered_at: now,
+            claimed: false,
+        };
+
+        env.storage()
+            .persistent()
+            .set(&DataKey::VycInsurancePayout(vyc_id), &payout);
+
+        // Emit event for off-chain tracking.
+        env.events().publish(
+            (Symbol::new(&env, "insurance_triggered"), vyc_id),
+            (condition_id, payout_amount, now),
+        );
+
+        Ok(payout)
+    }
+
+    /// Query the insurance payout record for a VYC (if any).
+    pub fn get_vyc_payout(env: Env, vyc_id: u64) -> Option<InsurancePayout> {
+        env.storage()
+            .persistent()
+            .get(&DataKey::VycInsurancePayout(vyc_id))
     }
 }
 

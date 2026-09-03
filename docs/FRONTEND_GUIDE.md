@@ -280,4 +280,57 @@ The score itself comes from the backend — never compute it client-side.
 
 ---
 
+## 9. Parametric Insurance (Drought / Flood Triggers) 🌧️
+
+AgriTrust includes on-chain parametric insurance: when an authorized admin reports
+a season-level weather condition (e.g. drought), VYCs in the matching region become
+eligible for a **partial payout**. The payout amount is computed deterministically
+on-chain.
+
+### Payout Formula
+
+```
+payout = vyc.expected_yield × condition.severity / 100
+```
+
+### Contract Functions
+
+| Function | Auth | Description |
+|----------|------|-------------|
+| `report_condition(condition, region, season, severity)` | Admin only | Report a weather event; returns `condition_id` |
+| `deactivate_condition(condition_id)` | Admin only | Deactivate a condition |
+| `get_condition(condition_id)` | Public | Read a condition record |
+| `get_region_conditions(region)` | Public | List condition ids for a region |
+| `check_insurance_eligibility(vyc_id)` | Public | Deterministic eligibility check (returns payout record or None) |
+| `trigger_insurance_payout(vyc_id, condition_id)` | Admin only | Trigger and store payout; emits `insurance_triggered` event |
+| `get_vyc_payout(vyc_id)` | Public | Query stored payout for a VYC |
+
+### Reading Insurance Data (Frontend)
+
+```typescript
+import { checkInsuranceEligibility, getVycPayout } from "../services/soroban";
+
+// Check if a VYC is eligible for a payout (read-only, no auth needed).
+const eligibility = await checkInsuranceEligibility("1");
+if (eligibility.success && eligibility.data) {
+  console.log(`VYC #${eligibility.data.vycId} eligible for ${eligibility.data.payoutAmount} micro-USDC`);
+}
+
+// Query a previously-triggered payout.
+const payout = await getVycPayout("1");
+if (payout.success && payout.data) {
+  console.log(`Payout: ${payout.data.payoutAmount} triggered at ${payout.data.triggeredAt}`);
+}
+```
+
+### Events
+
+- `condition_reported(condition_id, condition_type, region, season, severity, timestamp)`
+- `insurance_triggered(vyc_id, condition_id, payout_amount, timestamp)`
+
+The dashboard insurance card (`/dashboard`) reads `check_insurance_eligibility`
+for each active VYC to display live parametric coverage status.
+
+---
+
 *Ready to build the trust layer for verifiable agricultural finance? 🌾*

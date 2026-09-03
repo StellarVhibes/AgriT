@@ -12,8 +12,8 @@ import {
 import type { Account } from '@stellar/stellar-sdk';
 import type { NetworkType } from '../config/stellar.config.js';
 import { getStellarConfig } from '../config/stellar.config.js';
-import type { ContractWriteResult, VycRecord, VycStatus } from '../types/vyc.types.js';
-import { VYC_STATUSES } from '../types/vyc.types.js';
+import type { ContractWriteResult, VycRecord, VycStatus, SeasonCondition, InsurancePayout, ConditionType } from '../types/vyc.types.js';
+import { VYC_STATUSES, CONDITION_TYPES } from '../types/vyc.types.js';
 import { logger } from '../utils/logger.js';
 
 const STATUS_TAGS: VycStatus[] = VYC_STATUSES;
@@ -224,6 +224,140 @@ export class AgriTrustContractService {
       statusToScVal(status),
     ];
     return this.submitWrite((contract) => contract.call('update_status', ...args), opts);
+  }
+
+  // ── Parametric Insurance ────────────────────────────────────────────────
+
+  async reportCondition(
+    conditionType: ConditionType,
+    region: string,
+    season: string,
+    severity: number,
+    opts: { dryRun?: boolean } = {}
+  ): Promise<ContractWriteResult & { conditionId?: number }> {
+    if (!this.isConfigured()) {
+      return this.notConfigured();
+    }
+    const adminKey = Keypair.fromSecret(this.adminSecret as string);
+    const args: xdr.ScVal[] = [
+      new Address(adminKey.publicKey()).toScVal(),
+      xdr.ScVal.scvSymbol(conditionType),
+      xdr.ScVal.scvSymbol(region),
+      xdr.ScVal.scvSymbol(season),
+      nativeToScVal(severity, { type: 'u32' }),
+    ];
+    return this.submitWrite((contract) => contract.call('report_condition', ...args), opts);
+  }
+
+  async deactivateCondition(
+    conditionId: number,
+    opts: { dryRun?: boolean } = {}
+  ): Promise<ContractWriteResult> {
+    if (!this.isConfigured()) {
+      return this.notConfigured();
+    }
+    const adminKey = Keypair.fromSecret(this.adminSecret as string);
+    const args: xdr.ScVal[] = [
+      new Address(adminKey.publicKey()).toScVal(),
+      nativeToScVal(conditionId, { type: 'u64' }),
+    ];
+    return this.submitWrite((contract) => contract.call('deactivate_condition', ...args), opts);
+  }
+
+  async getCondition(conditionId: number, source?: string): Promise<SeasonCondition | null> {
+    try {
+      const decoded = await this.simulateRead(
+        'get_condition',
+        [nativeToScVal(conditionId, { type: 'u64' })],
+        source
+      );
+      if (!decoded || typeof decoded !== 'object') return null;
+      const obj = decoded as Record<string, unknown>;
+      return {
+        conditionId,
+        conditionType: obj.condition as ConditionType,
+        region: obj.region as string,
+        season: obj.season as string,
+        severity: typeof obj.severity === 'bigint' ? Number(obj.severity) : (obj.severity as number),
+        reportedBy: obj.reported_by as string,
+        reportedAt: typeof obj.reported_at === 'bigint' ? Number(obj.reported_at) : (obj.reported_at as number),
+        active: obj.active as boolean,
+      };
+    } catch (error) {
+      logger.error({ error: (error as Error).message, conditionId }, 'getCondition failed');
+      return null;
+    }
+  }
+
+  async getRegionConditions(region: string, source?: string): Promise<number[]> {
+    const decoded = await this.simulateRead(
+      'get_region_conditions',
+      [xdr.ScVal.scvSymbol(region)],
+      source
+    );
+    if (!Array.isArray(decoded)) return [];
+    return decoded.map((v) => (typeof v === 'bigint' ? Number(v) : Number(v)));
+  }
+
+  async checkInsuranceEligibility(vycId: number, source?: string): Promise<InsurancePayout | null> {
+    try {
+      const decoded = await this.simulateRead(
+        'check_insurance_eligibility',
+        [nativeToScVal(vycId, { type: 'u64' })],
+        source
+      );
+      if (!decoded || typeof decoded !== 'object') return null;
+      const obj = decoded as Record<string, unknown>;
+      return {
+        vycId: typeof obj.vyc_id === 'bigint' ? Number(obj.vyc_id) : (obj.vyc_id as number),
+        conditionId: typeof obj.condition_id === 'bigint' ? Number(obj.condition_id) : (obj.condition_id as number),
+        payoutAmount: typeof obj.payout_amount === 'bigint' ? Number(obj.payout_amount) : (obj.payout_amount as number),
+        triggeredAt: typeof obj.triggered_at === 'bigint' ? Number(obj.triggered_at) : (obj.triggered_at as number),
+        claimed: obj.claimed as boolean,
+      };
+    } catch (error) {
+      logger.error({ error: (error as Error).message, vycId }, 'checkInsuranceEligibility failed');
+      return null;
+    }
+  }
+
+  async triggerInsurancePayout(
+    vycId: number,
+    conditionId: number,
+    opts: { dryRun?: boolean } = {}
+  ): Promise<ContractWriteResult> {
+    if (!this.isConfigured()) {
+      return this.notConfigured();
+    }
+    const adminKey = Keypair.fromSecret(this.adminSecret as string);
+    const args: xdr.ScVal[] = [
+      new Address(adminKey.publicKey()).toScVal(),
+      nativeToScVal(vycId, { type: 'u64' }),
+      nativeToScVal(conditionId, { type: 'u64' }),
+    ];
+    return this.submitWrite((contract) => contract.call('trigger_insurance_payout', ...args), opts);
+  }
+
+  async getVycPayout(vycId: number, source?: string): Promise<InsurancePayout | null> {
+    try {
+      const decoded = await this.simulateRead(
+        'get_vyc_payout',
+        [nativeToScVal(vycId, { type: 'u64' })],
+        source
+      );
+      if (!decoded || typeof decoded !== 'object') return null;
+      const obj = decoded as Record<string, unknown>;
+      return {
+        vycId: typeof obj.vyc_id === 'bigint' ? Number(obj.vyc_id) : (obj.vyc_id as number),
+        conditionId: typeof obj.condition_id === 'bigint' ? Number(obj.condition_id) : (obj.condition_id as number),
+        payoutAmount: typeof obj.payout_amount === 'bigint' ? Number(obj.payout_amount) : (obj.payout_amount as number),
+        triggeredAt: typeof obj.triggered_at === 'bigint' ? Number(obj.triggered_at) : (obj.triggered_at as number),
+        claimed: obj.claimed as boolean,
+      };
+    } catch (error) {
+      logger.error({ error: (error as Error).message, vycId }, 'getVycPayout failed');
+      return null;
+    }
   }
 
   private notConfigured(): ContractWriteResult {

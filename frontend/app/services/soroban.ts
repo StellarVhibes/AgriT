@@ -64,6 +64,22 @@ export interface MintResult {
   error?: string;
 }
 
+export type ConditionType = "Drought" | "Flood" | "Heatwave" | "Frost";
+
+export interface InsurancePayout {
+  vycId: string;
+  conditionId: string;
+  payoutAmount: string;
+  triggeredAt: number;
+  claimed: boolean;
+}
+
+export interface InsuranceQueryResult {
+  success: boolean;
+  data?: InsurancePayout;
+  error?: string;
+}
+
 export interface TransactionLifecycle {
   onStatus?: (status: Exclude<TransactionStatus, "idle" | "success" | "failed">) => void;
 }
@@ -411,5 +427,118 @@ export async function getVycCount(): Promise<number> {
   } catch (error) {
     console.error("Error querying VYC count:", error);
     return 0;
+  }
+}
+
+/**
+ * Check insurance eligibility for a VYC deterministically on-chain.
+ * Returns the computed payout if eligible, null otherwise.
+ */
+export async function checkInsuranceEligibility(vycId: string): Promise<InsuranceQueryResult> {
+  try {
+    const server = getSorobanServer();
+    const dummyAccount = await server.getAccount(
+      "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF"
+    ).catch(() => null);
+
+    if (!dummyAccount) {
+      return { success: false, error: "Failed to initialize query" };
+    }
+
+    const contract = new Contract(SOROBAN_CONFIG.CONTRACT_ID);
+    const params = [nativeToScVal(vycId, { type: "u64" })];
+
+    const transaction = new TransactionBuilder(dummyAccount, {
+      fee: BASE_FEE,
+      networkPassphrase: SOROBAN_CONFIG.NETWORK_PASSPHRASE,
+    })
+      .addOperation(contract.call("check_insurance_eligibility", ...params))
+      .setTimeout(300)
+      .build();
+
+    const simResponse = await server.simulateTransaction(transaction);
+
+    if (rpc.Api.isSimulationSuccess(simResponse) && simResponse.result) {
+      const resultVal = simResponse.result.retval;
+      const data = scValToNative(resultVal);
+
+      if (!data) {
+        return { success: true };
+      }
+
+      const payout: InsurancePayout = {
+        vycId: data.vyc_id?.toString() ?? vycId,
+        conditionId: data.condition_id?.toString() ?? "0",
+        payoutAmount: data.payout_amount?.toString() ?? "0",
+        triggeredAt: Number(data.triggered_at ?? 0),
+        claimed: data.claimed ?? false,
+      };
+
+      return { success: true, data: payout };
+    }
+
+    return { success: false, error: "Failed to query insurance eligibility" };
+  } catch (error) {
+    console.error("Error checking insurance eligibility:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to check eligibility",
+    };
+  }
+}
+
+/**
+ * Get the stored insurance payout record for a VYC.
+ */
+export async function getVycPayout(vycId: string): Promise<InsuranceQueryResult> {
+  try {
+    const server = getSorobanServer();
+    const dummyAccount = await server.getAccount(
+      "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF"
+    ).catch(() => null);
+
+    if (!dummyAccount) {
+      return { success: false, error: "Failed to initialize query" };
+    }
+
+    const contract = new Contract(SOROBAN_CONFIG.CONTRACT_ID);
+    const params = [nativeToScVal(vycId, { type: "u64" })];
+
+    const transaction = new TransactionBuilder(dummyAccount, {
+      fee: BASE_FEE,
+      networkPassphrase: SOROBAN_CONFIG.NETWORK_PASSPHRASE,
+    })
+      .addOperation(contract.call("get_vyc_payout", ...params))
+      .setTimeout(300)
+      .build();
+
+    const simResponse = await server.simulateTransaction(transaction);
+
+    if (rpc.Api.isSimulationSuccess(simResponse) && simResponse.result) {
+      const resultVal = simResponse.result.retval;
+      const data = scValToNative(resultVal);
+
+      if (!data) {
+        return { success: true };
+      }
+
+      const payout: InsurancePayout = {
+        vycId: data.vyc_id?.toString() ?? vycId,
+        conditionId: data.condition_id?.toString() ?? "0",
+        payoutAmount: data.payout_amount?.toString() ?? "0",
+        triggeredAt: Number(data.triggered_at ?? 0),
+        claimed: data.claimed ?? false,
+      };
+
+      return { success: true, data: payout };
+    }
+
+    return { success: false, error: "Failed to query VYC payout" };
+  } catch (error) {
+    console.error("Error querying VYC payout:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to query payout",
+    };
   }
 }
