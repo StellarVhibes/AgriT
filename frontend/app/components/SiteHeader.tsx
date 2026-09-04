@@ -61,7 +61,7 @@ export function SiteHeader() {
             href="/login"
             className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
           >
-            Login / Connect Wallet
+            Get Started
           </Link>
         </div>
       </div>

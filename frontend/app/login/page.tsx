@@ -5,48 +5,40 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, ArrowLeft, Wallet, Shield, Phone, ChevronRight } from "lucide-react";
+import { Loader2, ArrowLeft, Wallet, Shield, Phone, ChevronRight, Eye, EyeOff } from "lucide-react";
+import { useFreighter } from "../hooks/useFreighter";
 
 const easeOutExpo = [0.21, 0.47, 0.32, 0.98] as const;
 
-type View = "choose" | "farmer-google" | "farmer-phone" | "farmer-otp" | "lender-wallet";
+type View = "choose" | "farmer-phone" | "farmer-password" | "lender-wallet";
 
 export default function LoginPage() {
   const router = useRouter();
   const [view, setView] = useState<View>("choose");
   const [phone, setPhone] = useState("");
-  const [otp, setOtp] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const { address, isConnected, isLoading: walletLoading, error: walletError, connect } = useFreighter();
 
-  async function handleGoogleLogin() {
+  async function handlePhoneLogin() {
+    if (!phone || phone.length < 10 || !password) return;
     setIsLoading(true);
     await new Promise((r) => setTimeout(r, 1500));
-    router.push("/onboarding");
-    setIsLoading(false);
-  }
-
-  async function handleSendOtp() {
-    if (!phone || phone.length < 10) return;
-    setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    setView("farmer-otp");
-    setIsLoading(false);
-  }
-
-  async function handleVerifyOtp() {
-    if (!otp || otp.length < 4) return;
-    setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 1000));
     router.push("/onboarding");
     setIsLoading(false);
   }
 
   async function handleWalletConnect() {
     setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 1500));
-    router.push("/kyc");
+    await connect();
     setIsLoading(false);
+    if (isConnected || address) {
+      router.push("/kyc");
+    }
   }
+
+  const isValid = phone.length >= 10 && password.length >= 1;
 
   return (
     <div className="flex min-h-screen flex-col lg:flex-row">
@@ -93,7 +85,7 @@ export default function LoginPage() {
             Your trust, always accessible
           </p>
           <p className="mt-1.5 text-sm leading-relaxed text-[#5A7A60]/70 dark:text-[#9AB0A0]/60">
-            Farmers: sign in with Google or phone — no wallet needed.
+            Farmers: sign in with phone — no wallet needed.
             <br />
             Lenders: connect Freighter and complete KYC.
           </p>
@@ -114,6 +106,18 @@ export default function LoginPage() {
         />
 
         <div className="relative mx-auto w-full max-w-[420px]">
+          {/* Back button — top-left of right panel */}
+          <motion.button
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3 }}
+            onClick={() => window.history.back()}
+            className="absolute -left-16 top-0 flex h-10 w-10 items-center justify-center rounded-full border border-[#D8D5CC] bg-white text-[#5A7A60] shadow-sm transition-all hover:bg-[#F0FAF2] hover:text-[#3A7D44] hover:shadow-md dark:border-[#2A3D2E] dark:bg-[#162018] dark:text-[#9AB0A0] dark:hover:bg-[#1A2A1E] dark:hover:text-[#5CB86A] lg:-left-20"
+            aria-label="Go back"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </motion.button>
+
           {/* Headline */}
           <motion.h1
             initial={{ opacity: 0, y: 12 }}
@@ -144,24 +148,21 @@ export default function LoginPage() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -12 }}
                 transition={{ duration: 0.35, ease: easeOutExpo }}
-                className="mt-8 space-y-3"
+                className="mt-8"
               >
-                {/* Continue with Google */}
-                <button
-                  onClick={() => setView("farmer-google")}
-                  className="flex w-full items-center gap-3 rounded-xl border border-[#D8D5CC] bg-white px-4 py-4 text-left text-[0.95rem] font-medium text-[#1B3A20] transition-all hover:border-[#3A7D44] hover:shadow-sm dark:border-[#2A3D2E] dark:bg-[#162018] dark:text-[#E8F0EA] dark:hover:border-[#5CB86A]"
-                >
-                  <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24">
-                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
-                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                  </svg>
-                  Continue with Google
-                </button>
+                {/* Farmer section */}
+                <div className="space-y-3">
+                  <button
+                    onClick={() => setView("farmer-phone")}
+                    className="flex w-full items-center gap-3 rounded-xl border border-[#3A7D44] bg-white px-4 py-4 text-left text-[0.95rem] font-medium text-[#1B3A20] transition-all hover:bg-[#F0FAF2] dark:border-[#5CB86A] dark:bg-[#162018] dark:text-[#E8F0EA] dark:hover:bg-[#1A2A1E]"
+                  >
+                    <Phone className="h-5 w-5 shrink-0 text-[#3A7D44] dark:text-[#5CB86A]" />
+                    Continue with phone number
+                  </button>
+                </div>
 
-                {/* Divider */}
-                <div className="relative py-1">
+                {/* Divider — Farmer vs Lender */}
+                <div className="relative py-5">
                   <div className="absolute inset-0 flex items-center">
                     <div className="w-full border-t border-[#D8D5CC] dark:border-[#2A3D2E]" />
                   </div>
@@ -170,77 +171,32 @@ export default function LoginPage() {
                   </div>
                 </div>
 
-                {/* Continue with phone */}
-                <button
-                  onClick={() => setView("farmer-phone")}
-                  className="flex w-full items-center gap-3 rounded-xl border border-[#3A7D44] bg-white px-4 py-4 text-left text-[0.95rem] font-medium text-[#1B3A20] transition-all hover:bg-[#F0FAF2] dark:border-[#5CB86A] dark:bg-[#162018] dark:text-[#E8F0EA] dark:hover:bg-[#1A2A1E]"
-                >
-                  <Phone className="h-5 w-5 shrink-0 text-[#3A7D44] dark:text-[#5CB86A]" />
-                  Continue with phone
-                </button>
-
-                {/* Lender / investor entry */}
-                <div className="pt-4">
+                {/* Lender / Investor section */}
+                <div className="rounded-2xl border border-[#D8D5CC] bg-white p-5 dark:border-[#2A3D2E] dark:bg-[#162018]">
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[#8A9E8F] dark:text-[#6A8A70]">
+                    Investor or Lender?
+                  </p>
                   <button
                     onClick={() => setView("lender-wallet")}
-                    className="group flex w-full items-center gap-3 rounded-xl px-4 py-3.5 text-left transition-all hover:bg-[#EAE8DF] dark:hover:bg-[#1A2A1E]"
+                    className="group flex w-full items-center gap-4 rounded-xl border border-[#D8D5CC] bg-[#F7F5EE] px-4 py-4 text-left transition-all hover:border-[#3A7D44] hover:shadow-sm dark:border-[#2A3D2E] dark:bg-[#0F1A12] dark:hover:border-[#5CB86A]"
                   >
-                    <Wallet className="h-5 w-5 text-[#5A7A60] group-hover:text-[#3A7D44] dark:text-[#9AB0A0] dark:group-hover:text-[#5CB86A]" />
+                    <Wallet className="h-6 w-6 shrink-0 text-[#5A7A60] group-hover:text-[#3A7D44] dark:text-[#9AB0A0] dark:group-hover:text-[#5CB86A]" />
                     <div className="flex-1">
-                      <p className="text-[0.95rem] font-medium text-[#1B3A20] dark:text-[#E8F0EA]">
-                        I am a lender or investor
-                      </p>
-                      <p className="text-sm text-[#8A9E8F] dark:text-[#6A8A70]">
+                      <p className="text-[0.95rem] font-semibold text-[#1B3A20] dark:text-[#E8F0EA]">
                         Connect your wallet
                       </p>
+                      <p className="text-sm text-[#8A9E8F] dark:text-[#6A8A70]">
+                        Access investor tools and settlement features
+                      </p>
                     </div>
-                    <ChevronRight className="h-4 w-4 text-[#B0ADA5] group-hover:text-[#3A7D44] dark:text-[#4A6A50] dark:group-hover:text-[#5CB86A]" />
-                  </button>
-                </div>
-              </motion.div>
-            )}
-
-            {view === "farmer-google" && (
-              <motion.div
-                key="farmer-google"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.3, ease: easeOutExpo }}
-                className="mt-8"
-              >
-                <button
-                  onClick={handleGoogleLogin}
-                  disabled={isLoading}
-                  className="flex w-full items-center justify-center gap-3 rounded-xl border border-[#D8D5CC] bg-white px-4 py-4 text-[0.95rem] font-medium text-[#1B3A20] transition-colors hover:bg-[#F5F3ED] disabled:opacity-50 dark:border-[#2A3D2E] dark:bg-[#162018] dark:text-[#E8F0EA] dark:hover:bg-[#1A2A1E]"
-                >
-                  {isLoading ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
-                    <svg className="h-5 w-5" viewBox="0 0 24 24">
-                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
-                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                    </svg>
-                  )}
-                  Sign in with Google
-                </button>
-                <div className="mt-3 text-center">
-                  <button
-                    onClick={() => setView("farmer-phone")}
-                    className="text-sm text-[#5A7A60] hover:text-[#3A7D44] dark:text-[#9AB0A0] dark:hover:text-[#5CB86A]"
-                  >
-                    Use phone number instead
-                  </button>
-                </div>
-                <div className="mt-4 text-center">
-                  <button
-                    onClick={() => setView("choose")}
-                    className="inline-flex items-center gap-1 text-sm text-[#8A9E8F] hover:text-[#3A7D44] dark:text-[#6A8A70] dark:hover:text-[#5CB86A]"
-                  >
-                    <ArrowLeft className="h-3.5 w-3.5" />
-                    Back
+                    <Image
+                      src="/assets/3d-reusage-icons-img/icon_liquidity_pool.png"
+                      alt=""
+                      width={40}
+                      height={40}
+                      className="h-10 w-10 shrink-0 opacity-60 transition-opacity group-hover:opacity-100"
+                    />
+                    <ChevronRight className="h-4 w-4 shrink-0 text-[#B0ADA5] group-hover:text-[#3A7D44] dark:text-[#4A6A50] dark:group-hover:text-[#5CB86A]" />
                   </button>
                 </div>
               </motion.div>
@@ -259,70 +215,55 @@ export default function LoginPage() {
                   <label htmlFor="phone" className="mb-1.5 block text-sm font-medium text-[#1B3A20] dark:text-[#E8F0EA]">
                     Phone number
                   </label>
-                  <input
-                    id="phone"
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="+234 801 234 5678"
-                    className="w-full rounded-xl border border-[#D8D5CC] bg-white px-4 py-3.5 text-[0.95rem] text-[#1B3A20] placeholder:text-[#B0ADA5] focus:border-[#3A7D44] focus:outline-none focus:ring-2 focus:ring-[#3A7D44]/20 dark:border-[#2A3D2E] dark:bg-[#162018] dark:text-[#E8F0EA] dark:placeholder:text-[#4A6A50] dark:focus:border-[#5CB86A] dark:focus:ring-[#5CB86A]/20"
-                  />
+                  <div className="relative">
+                    <Phone className="absolute left-3.5 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-[#8A9E8F] dark:text-[#6A8A70]" />
+                    <input
+                      id="phone"
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="+234 801 234 5678"
+                      className="w-full rounded-xl border border-[#D8D5CC] bg-white py-3 pl-11 pr-4 text-[0.95rem] text-[#1B3A20] placeholder:text-[#B0ADA5] focus:border-[#3A7D44] focus:outline-none focus:ring-2 focus:ring-[#3A7D44]/20 dark:border-[#2A3D2E] dark:bg-[#162018] dark:text-[#E8F0EA] dark:placeholder:text-[#4A6A50] dark:focus:border-[#5CB86A] dark:focus:ring-[#5CB86A]/20"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-[#1B3A20] dark:text-[#E8F0EA]">
+                    Password or secret word
+                  </label>
+                  <div className="relative">
+                    <svg className="absolute left-3.5 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-[#8A9E8F] dark:text-[#6A8A70]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                    <input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Your sync phrase or password"
+                      className="w-full rounded-xl border border-[#D8D5CC] bg-white py-3 pl-11 pr-11 text-[0.95rem] text-[#1B3A20] placeholder:text-[#B0ADA5] focus:border-[#3A7D44] focus:outline-none focus:ring-2 focus:ring-[#3A7D44]/20 dark:border-[#2A3D2E] dark:bg-[#162018] dark:text-[#E8F0EA] dark:placeholder:text-[#4A6A50] dark:focus:border-[#5CB86A] dark:focus:ring-[#5CB86A]/20"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#8A9E8F] hover:text-[#5A7A60] dark:text-[#6A8A70] dark:hover:text-[#9AB0A0]"
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
+                    </button>
+                  </div>
                 </div>
                 <button
-                  onClick={handleSendOtp}
-                  disabled={isLoading || phone.length < 10}
+                  onClick={handlePhoneLogin}
+                  disabled={isLoading || !isValid}
                   className="w-full rounded-xl bg-[#3A7D44] px-4 py-4 text-[0.95rem] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40 dark:bg-[#5CB86A] dark:text-[#0F1A12]"
                 >
-                  {isLoading ? <Loader2 className="mx-auto h-5 w-5 animate-spin" /> : "Send OTP"}
+                  {isLoading ? <Loader2 className="mx-auto h-5 w-5 animate-spin" /> : "Sign In"}
                 </button>
                 <button
-                  onClick={() => setView("choose")}
+                  onClick={() => { setView("choose"); setPhone(""); setPassword(""); }}
                   className="inline-flex items-center gap-1 text-sm text-[#8A9E8F] hover:text-[#3A7D44] dark:text-[#6A8A70] dark:hover:text-[#5CB86A]"
                 >
                   <ArrowLeft className="h-3.5 w-3.5" />
                   Back
-                </button>
-              </motion.div>
-            )}
-
-            {view === "farmer-otp" && (
-              <motion.div
-                key="farmer-otp"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.3, ease: easeOutExpo }}
-                className="mt-8 space-y-4"
-              >
-                <p className="text-[0.95rem] text-[#5A7A60] dark:text-[#9AB0A0]">
-                  We sent a code to <strong className="text-[#1B3A20] dark:text-[#E8F0EA]">{phone}</strong>
-                </p>
-                <div>
-                  <label htmlFor="otp" className="mb-1.5 block text-sm font-medium text-[#1B3A20] dark:text-[#E8F0EA]">
-                    Verification code
-                  </label>
-                  <input
-                    id="otp"
-                    type="text"
-                    inputMode="numeric"
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                    placeholder="123456"
-                    className="w-full rounded-xl border border-[#D8D5CC] bg-white px-4 py-3.5 text-center font-mono text-xl tracking-[0.3em] text-[#1B3A20] placeholder:text-[#B0ADA5] focus:border-[#3A7D44] focus:outline-none focus:ring-2 focus:ring-[#3A7D44]/20 dark:border-[#2A3D2E] dark:bg-[#162018] dark:text-[#E8F0EA] dark:placeholder:text-[#4A6A50] dark:focus:border-[#5CB86A] dark:focus:ring-[#5CB86A]/20"
-                  />
-                </div>
-                <button
-                  onClick={handleVerifyOtp}
-                  disabled={isLoading || otp.length < 4}
-                  className="w-full rounded-xl bg-[#3A7D44] px-4 py-4 text-[0.95rem] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40 dark:bg-[#5CB86A] dark:text-[#0F1A12]"
-                >
-                  {isLoading ? <Loader2 className="mx-auto h-5 w-5 animate-spin" /> : "Verify & Continue"}
-                </button>
-                <button
-                  onClick={() => { setView("farmer-phone"); setOtp(""); }}
-                  className="text-sm text-[#8A9E8F] hover:text-[#3A7D44] dark:text-[#6A8A70] dark:hover:text-[#5CB86A]"
-                >
-                  Change phone number
                 </button>
               </motion.div>
             )}
@@ -344,35 +285,58 @@ export default function LoginPage() {
                       <p className="text-sm text-[#8A9E8F] dark:text-[#6A8A70]">For lenders, insurers &amp; investors</p>
                     </div>
                   </div>
-                  <p className="mb-4 text-[0.95rem] text-[#5A7A60] dark:text-[#9AB0A0]">
-                    Connect a wallet to access investor tools and settlement features.
+
+                  {walletError && (
+                    <div className="mb-4 rounded-xl border border-[#C4713A]/30 bg-[#C4713A]/5 p-3 text-sm text-[#C4713A] dark:border-[#E89A5A]/30 dark:bg-[#E89A5A]/5 dark:text-[#E89A5A]">
+                      {walletError}
+                    </div>
+                  )}
+
+                  {isConnected && address ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2 rounded-lg bg-[#3A7D44]/10 px-3 py-2 text-sm font-medium text-[#3A7D44] dark:bg-[#5CB86A]/10 dark:text-[#5CB86A]">
+                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 6L9 17l-5-5"/></svg>
+                        Connected
+                      </div>
+                      <p className="font-mono text-xs text-[#8A9E8F] break-all dark:text-[#6A8A70]">
+                        {address}
+                      </p>
+                      <button
+                        onClick={() => router.push("/kyc")}
+                        className="w-full rounded-xl bg-[#3A7D44] px-4 py-4 text-[0.95rem] font-semibold text-white transition-opacity hover:opacity-90 dark:bg-[#5CB86A] dark:text-[#0F1A12]"
+                      >
+                        Continue to KYC
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={handleWalletConnect}
+                      disabled={isLoading || walletLoading}
+                      className="w-full rounded-xl bg-[#3A7D44] px-4 py-4 text-[0.95rem] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50 dark:bg-[#5CB86A] dark:text-[#0F1A12]"
+                    >
+                      {isLoading || walletLoading ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                          Connecting...
+                        </span>
+                      ) : (
+                        "Connect Wallet & Continue"
+                      )}
+                    </button>
+                  )}
+
+                  <p className="mt-4 text-xs text-[#8A9E8F] text-center dark:text-[#6A8A70]">
+                    Don&apos;t have Freighter?{" "}
+                    <a
+                      href="https://freighter.app"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[#3A7D44] underline-offset-2 hover:underline dark:text-[#5CB86A]"
+                    >
+                      Install it here
+                    </a>
                   </p>
-                  <button
-                    onClick={handleWalletConnect}
-                    disabled={isLoading}
-                    className="w-full rounded-xl bg-[#3A7D44] px-4 py-4 text-[0.95rem] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50 dark:bg-[#5CB86A] dark:text-[#0F1A12]"
-                  >
-                    {isLoading ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                        Connecting...
-                      </span>
-                    ) : (
-                      "Connect Wallet & Continue"
-                    )}
-                  </button>
                 </div>
-                <p className="mt-3 text-center text-sm text-[#8A9E8F] dark:text-[#6A8A70]">
-                  Don&apos;t have Freighter?{" "}
-                  <a
-                    href="https://freighter.app"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[#3A7D44] underline-offset-2 hover:underline dark:text-[#5CB86A]"
-                  >
-                    Install it here
-                  </a>
-                </p>
                 <div className="mt-4 text-center">
                   <button
                     onClick={() => setView("choose")}

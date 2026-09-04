@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { Loader2, Shield, Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { Loader2, ArrowLeft, Shield, Mail, Lock, Eye, EyeOff, Wallet, ChevronRight } from "lucide-react";
+import { useFreighter } from "../hooks/useFreighter";
 
 const easeOutExpo = [0.21, 0.47, 0.32, 0.98] as const;
 
@@ -15,6 +16,7 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const { address, isConnected, isLoading: walletLoading, error: walletError, connect } = useFreighter();
 
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault();
@@ -23,6 +25,15 @@ export default function RegisterPage() {
     await new Promise((r) => setTimeout(r, 1500));
     router.push("/onboarding");
     setIsLoading(false);
+  }
+
+  async function handleWalletConnect() {
+    setIsLoading(true);
+    await connect();
+    setIsLoading(false);
+    if (isConnected || address) {
+      router.push("/kyc");
+    }
   }
 
   const isValid = email.includes("@") && password.length >= 8;
@@ -93,6 +104,18 @@ export default function RegisterPage() {
         />
 
         <div className="relative mx-auto w-full max-w-[420px]">
+          {/* Back button — top-left of right panel */}
+          <motion.button
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3 }}
+            onClick={() => window.history.back()}
+            className="absolute -left-16 top-0 flex h-10 w-10 items-center justify-center rounded-full border border-[#D8D5CC] bg-white text-[#5A7A60] shadow-sm transition-all hover:bg-[#F0FAF2] hover:text-[#3A7D44] hover:shadow-md dark:border-[#2A3D2E] dark:bg-[#162018] dark:text-[#9AB0A0] dark:hover:bg-[#1A2A1E] dark:hover:text-[#5CB86A] lg:-left-20"
+            aria-label="Go back"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </motion.button>
+
           {/* Headline */}
           <motion.h1
             initial={{ opacity: 0, y: 12 }}
@@ -112,7 +135,7 @@ export default function RegisterPage() {
             Enter your details to get started with AgriTrust.
           </motion.p>
 
-          {/* Form */}
+          {/* Farmer form */}
           <motion.form
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
@@ -179,8 +202,8 @@ export default function RegisterPage() {
             </button>
           </motion.form>
 
-          {/* Divider */}
-          <div className="relative py-6">
+          {/* Divider — Farmer vs Lender */}
+          <div className="relative py-5">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-[#D8D5CC] dark:border-[#2A3D2E]" />
             </div>
@@ -189,12 +212,69 @@ export default function RegisterPage() {
             </div>
           </div>
 
+          {/* Lender / Investor section */}
+          <div className="rounded-2xl border border-[#D8D5CC] bg-white p-5 dark:border-[#2A3D2E] dark:bg-[#162018]">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[#8A9E8F] dark:text-[#6A8A70]">
+              Investor or Lender?
+            </p>
+            <button
+              onClick={handleWalletConnect}
+              disabled={isLoading || walletLoading}
+              className="group flex w-full items-center gap-4 rounded-xl border border-[#D8D5CC] bg-[#F7F5EE] px-4 py-4 text-left transition-all hover:border-[#3A7D44] hover:shadow-sm dark:border-[#2A3D2E] dark:bg-[#0F1A12] dark:hover:border-[#5CB86A]"
+            >
+              {isLoading || walletLoading ? (
+                <Loader2 className="h-6 w-6 shrink-0 animate-spin text-[#5A7A60] dark:text-[#9AB0A0]" />
+              ) : (
+                <Wallet className="h-6 w-6 shrink-0 text-[#5A7A60] group-hover:text-[#3A7D44] dark:text-[#9AB0A0] dark:group-hover:text-[#5CB86A]" />
+              )}
+              <div className="flex-1">
+                <p className="text-[0.95rem] font-semibold text-[#1B3A20] dark:text-[#E8F0EA]">
+                  {isConnected && address ? "Wallet Connected" : "Connect your wallet"}
+                </p>
+                <p className="text-sm text-[#8A9E8F] dark:text-[#6A8A70]">
+                  {isConnected && address ? address.slice(0, 8) + "..." + address.slice(-4) : "Access investor tools and settlement features"}
+                </p>
+              </div>
+              <Image
+                src="/assets/3d-reusage-icons-img/icon_liquidity_pool.png"
+                alt=""
+                width={40}
+                height={40}
+                className="h-10 w-10 shrink-0 opacity-60 transition-opacity group-hover:opacity-100"
+              />
+              <ChevronRight className="h-4 w-4 shrink-0 text-[#B0ADA5] group-hover:text-[#3A7D44] dark:text-[#4A6A50] dark:group-hover:text-[#5CB86A]" />
+            </button>
+
+            {walletError && (
+              <p className="mt-2 text-xs text-[#C4713A] dark:text-[#E89A5A]">{walletError}</p>
+            )}
+
+            {isConnected && address && (
+              <div className="mt-3 flex items-center gap-2 rounded-lg bg-[#3A7D44]/10 px-3 py-2 text-sm font-medium text-[#3A7D44] dark:bg-[#5CB86A]/10 dark:text-[#5CB86A]">
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 6L9 17l-5-5"/></svg>
+                Connected
+              </div>
+            )}
+
+            <p className="mt-3 text-xs text-[#8A9E8F] text-center dark:text-[#6A8A70]">
+              Don&apos;t have Freighter?{" "}
+              <a
+                href="https://freighter.app"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#3A7D44] underline-offset-2 hover:underline dark:text-[#5CB86A]"
+              >
+                Install it here
+              </a>
+            </p>
+          </div>
+
           {/* Sign in link */}
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.3 }}
-            className="text-center text-[0.95rem] text-[#8A9E8F] dark:text-[#6A8A70]"
+            className="mt-6 text-center text-[0.95rem] text-[#8A9E8F] dark:text-[#6A8A70]"
           >
             Already have an account?{" "}
             <Link href="/login" className="font-semibold text-[#3A7D44] hover:underline dark:text-[#5CB86A]">
