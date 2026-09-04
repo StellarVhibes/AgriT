@@ -50,26 +50,76 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen flex-col lg:flex-row">
-      {/* ── Left — Auth panel ── */}
-      <div className="flex w-full flex-col justify-center bg-[#F7F5EE] px-6 py-10 dark:bg-[#0F1A12] lg:w-[46%] lg:px-12 lg:py-0">
-        <div className="mx-auto w-full max-w-[380px]">
-          {/* Brand */}
-          <Link href="/" className="mb-8 inline-flex items-center gap-2">
-            <Image
-              src="/agrit-logo.svg"
-              alt="AgriTrust"
-              width={40}
-              height={40}
-              className="h-10 w-10"
-            />
-          </Link>
+      {/* ── Left — Visual trust panel ── */}
+      <div className="relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-[#E8F5EA] via-[#F0FAF2] to-[#F7F5EE] lg:w-1/2 dark:from-[#0A120C] dark:via-[#0F1A12] dark:to-[#122016]">
+        {/* Logo — top-left corner, tight to edge */}
+        <Link href="/" className="absolute left-4 top-4 z-20 inline-flex items-center gap-2 sm:left-6 sm:top-6">
+          <Image
+            src="/agrit-logo.svg"
+            alt="AgriTrust"
+            width={36}
+            height={36}
+            className="h-9 w-9"
+          />
+        </Link>
 
+        {/* 3D Illustration — 2x size */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.6, delay: 0.15, ease: easeOutExpo }}
+          className="relative z-10 mx-auto w-full max-w-lg px-8"
+        >
+          <div className="relative aspect-square">
+            <Image
+              src="/assets/signin-login-imgs/auth_login_verified_seedling.png"
+              alt="Secure access to your trust certificates"
+              fill
+              sizes="700px"
+              className="object-contain"
+              priority
+            />
+          </div>
+        </motion.div>
+
+        {/* Caption */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.35, ease: easeOutExpo }}
+          className="relative z-10 mt-6 text-center"
+        >
+          <p className="text-base font-semibold text-[#3A6A42] dark:text-[#7AAA80]">
+            Your trust, always accessible
+          </p>
+          <p className="mt-1.5 text-sm leading-relaxed text-[#5A7A60]/70 dark:text-[#9AB0A0]/60">
+            Farmers: sign in with Google or phone — no wallet needed.
+            <br />
+            Lenders: connect Freighter and complete KYC.
+          </p>
+        </motion.div>
+      </div>
+
+      {/* ── Right — Auth panel ── */}
+      <div className="relative flex w-full flex-col justify-center bg-[#F7F5EE] px-8 py-12 dark:bg-[#0F1A12] lg:w-1/2 lg:px-16 lg:py-0">
+        {/* Abstract background pattern */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 opacity-[0.06]"
+          style={{
+            backgroundImage: "url(/assets/abstract-background/pattern_organic_growth.png)",
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+          }}
+        />
+
+        <div className="relative mx-auto w-full max-w-[420px]">
           {/* Headline */}
           <motion.h1
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: easeOutExpo }}
-            className="text-[2rem] font-bold leading-[1.02] text-[#1B3A20] dark:text-[#E8F0EA] sm:text-[2.5rem]"
+            className="text-[2.25rem] font-bold leading-[1.02] text-[#1B3A20] dark:text-[#E8F0EA] sm:text-[2.75rem]"
           >
             Build your farming
             <br />
@@ -80,7 +130,7 @@ export default function LoginPage() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.08, ease: easeOutExpo }}
-            className="mt-3 text-[0.95rem] leading-relaxed text-[#5A7A60] dark:text-[#9AB0A0]"
+            className="mt-4 text-lg leading-relaxed text-[#5A7A60] dark:text-[#9AB0A0]"
           >
             Sign in simply. AgriTrust handles the Web3 complexity for you.
           </motion.p>
@@ -99,7 +149,7 @@ export default function LoginPage() {
                 {/* Continue with Google */}
                 <button
                   onClick={() => setView("farmer-google")}
-                  className="flex w-full items-center gap-3 rounded-xl border border-[#D8D5CC] bg-white px-4 py-3.5 text-left text-sm font-medium text-[#1B3A20] transition-all hover:border-[#3A7D44] hover:shadow-sm dark:border-[#2A3D2E] dark:bg-[#162018] dark:text-[#E8F0EA] dark:hover:border-[#5CB86A]"
+                  className="flex w-full items-center gap-3 rounded-xl border border-[#D8D5CC] bg-white px-4 py-4 text-left text-[0.95rem] font-medium text-[#1B3A20] transition-all hover:border-[#3A7D44] hover:shadow-sm dark:border-[#2A3D2E] dark:bg-[#162018] dark:text-[#E8F0EA] dark:hover:border-[#5CB86A]"
                 >
                   <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24">
                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
@@ -123,7 +173,7 @@ export default function LoginPage() {
                 {/* Continue with phone */}
                 <button
                   onClick={() => setView("farmer-phone")}
-                  className="flex w-full items-center gap-3 rounded-xl border border-[#3A7D44] bg-white px-4 py-3.5 text-left text-sm font-medium text-[#1B3A20] transition-all hover:bg-[#F0FAF2] dark:border-[#5CB86A] dark:bg-[#162018] dark:text-[#E8F0EA] dark:hover:bg-[#1A2A1E]"
+                  className="flex w-full items-center gap-3 rounded-xl border border-[#3A7D44] bg-white px-4 py-4 text-left text-[0.95rem] font-medium text-[#1B3A20] transition-all hover:bg-[#F0FAF2] dark:border-[#5CB86A] dark:bg-[#162018] dark:text-[#E8F0EA] dark:hover:bg-[#1A2A1E]"
                 >
                   <Phone className="h-5 w-5 shrink-0 text-[#3A7D44] dark:text-[#5CB86A]" />
                   Continue with phone
@@ -133,14 +183,14 @@ export default function LoginPage() {
                 <div className="pt-4">
                   <button
                     onClick={() => setView("lender-wallet")}
-                    className="group flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm transition-all hover:bg-[#EAE8DF] dark:hover:bg-[#1A2A1E]"
+                    className="group flex w-full items-center gap-3 rounded-xl px-4 py-3.5 text-left transition-all hover:bg-[#EAE8DF] dark:hover:bg-[#1A2A1E]"
                   >
                     <Wallet className="h-5 w-5 text-[#5A7A60] group-hover:text-[#3A7D44] dark:text-[#9AB0A0] dark:group-hover:text-[#5CB86A]" />
                     <div className="flex-1">
-                      <p className="font-medium text-[#1B3A20] dark:text-[#E8F0EA]">
+                      <p className="text-[0.95rem] font-medium text-[#1B3A20] dark:text-[#E8F0EA]">
                         I am a lender or investor
                       </p>
-                      <p className="text-xs text-[#8A9E8F] dark:text-[#6A8A70]">
+                      <p className="text-sm text-[#8A9E8F] dark:text-[#6A8A70]">
                         Connect your wallet
                       </p>
                     </div>
@@ -162,7 +212,7 @@ export default function LoginPage() {
                 <button
                   onClick={handleGoogleLogin}
                   disabled={isLoading}
-                  className="flex w-full items-center justify-center gap-3 rounded-xl border border-[#D8D5CC] bg-white px-4 py-3.5 text-sm font-medium text-[#1B3A20] transition-colors hover:bg-[#F5F3ED] disabled:opacity-50 dark:border-[#2A3D2E] dark:bg-[#162018] dark:text-[#E8F0EA] dark:hover:bg-[#1A2A1E]"
+                  className="flex w-full items-center justify-center gap-3 rounded-xl border border-[#D8D5CC] bg-white px-4 py-4 text-[0.95rem] font-medium text-[#1B3A20] transition-colors hover:bg-[#F5F3ED] disabled:opacity-50 dark:border-[#2A3D2E] dark:bg-[#162018] dark:text-[#E8F0EA] dark:hover:bg-[#1A2A1E]"
                 >
                   {isLoading ? (
                     <Loader2 className="h-5 w-5 animate-spin" />
@@ -206,7 +256,7 @@ export default function LoginPage() {
                 className="mt-8 space-y-4"
               >
                 <div>
-                  <label htmlFor="phone" className="mb-1 block text-sm font-medium text-[#1B3A20] dark:text-[#E8F0EA]">
+                  <label htmlFor="phone" className="mb-1.5 block text-sm font-medium text-[#1B3A20] dark:text-[#E8F0EA]">
                     Phone number
                   </label>
                   <input
@@ -215,13 +265,13 @@ export default function LoginPage() {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="+234 801 234 5678"
-                    className="w-full rounded-xl border border-[#D8D5CC] bg-white px-4 py-3 text-sm text-[#1B3A20] placeholder:text-[#B0ADA5] focus:border-[#3A7D44] focus:outline-none focus:ring-2 focus:ring-[#3A7D44]/20 dark:border-[#2A3D2E] dark:bg-[#162018] dark:text-[#E8F0EA] dark:placeholder:text-[#4A6A50] dark:focus:border-[#5CB86A] dark:focus:ring-[#5CB86A]/20"
+                    className="w-full rounded-xl border border-[#D8D5CC] bg-white px-4 py-3.5 text-[0.95rem] text-[#1B3A20] placeholder:text-[#B0ADA5] focus:border-[#3A7D44] focus:outline-none focus:ring-2 focus:ring-[#3A7D44]/20 dark:border-[#2A3D2E] dark:bg-[#162018] dark:text-[#E8F0EA] dark:placeholder:text-[#4A6A50] dark:focus:border-[#5CB86A] dark:focus:ring-[#5CB86A]/20"
                   />
                 </div>
                 <button
                   onClick={handleSendOtp}
                   disabled={isLoading || phone.length < 10}
-                  className="w-full rounded-xl bg-[#3A7D44] px-4 py-3.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40 dark:bg-[#5CB86A] dark:text-[#0F1A12]"
+                  className="w-full rounded-xl bg-[#3A7D44] px-4 py-4 text-[0.95rem] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40 dark:bg-[#5CB86A] dark:text-[#0F1A12]"
                 >
                   {isLoading ? <Loader2 className="mx-auto h-5 w-5 animate-spin" /> : "Send OTP"}
                 </button>
@@ -244,11 +294,11 @@ export default function LoginPage() {
                 transition={{ duration: 0.3, ease: easeOutExpo }}
                 className="mt-8 space-y-4"
               >
-                <p className="text-sm text-[#5A7A60] dark:text-[#9AB0A0]">
+                <p className="text-[0.95rem] text-[#5A7A60] dark:text-[#9AB0A0]">
                   We sent a code to <strong className="text-[#1B3A20] dark:text-[#E8F0EA]">{phone}</strong>
                 </p>
                 <div>
-                  <label htmlFor="otp" className="mb-1 block text-sm font-medium text-[#1B3A20] dark:text-[#E8F0EA]">
+                  <label htmlFor="otp" className="mb-1.5 block text-sm font-medium text-[#1B3A20] dark:text-[#E8F0EA]">
                     Verification code
                   </label>
                   <input
@@ -258,13 +308,13 @@ export default function LoginPage() {
                     value={otp}
                     onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
                     placeholder="123456"
-                    className="w-full rounded-xl border border-[#D8D5CC] bg-white px-4 py-3 text-center font-mono text-lg tracking-[0.3em] text-[#1B3A20] placeholder:text-[#B0ADA5] focus:border-[#3A7D44] focus:outline-none focus:ring-2 focus:ring-[#3A7D44]/20 dark:border-[#2A3D2E] dark:bg-[#162018] dark:text-[#E8F0EA] dark:placeholder:text-[#4A6A50] dark:focus:border-[#5CB86A] dark:focus:ring-[#5CB86A]/20"
+                    className="w-full rounded-xl border border-[#D8D5CC] bg-white px-4 py-3.5 text-center font-mono text-xl tracking-[0.3em] text-[#1B3A20] placeholder:text-[#B0ADA5] focus:border-[#3A7D44] focus:outline-none focus:ring-2 focus:ring-[#3A7D44]/20 dark:border-[#2A3D2E] dark:bg-[#162018] dark:text-[#E8F0EA] dark:placeholder:text-[#4A6A50] dark:focus:border-[#5CB86A] dark:focus:ring-[#5CB86A]/20"
                   />
                 </div>
                 <button
                   onClick={handleVerifyOtp}
                   disabled={isLoading || otp.length < 4}
-                  className="w-full rounded-xl bg-[#3A7D44] px-4 py-3.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40 dark:bg-[#5CB86A] dark:text-[#0F1A12]"
+                  className="w-full rounded-xl bg-[#3A7D44] px-4 py-4 text-[0.95rem] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40 dark:bg-[#5CB86A] dark:text-[#0F1A12]"
                 >
                   {isLoading ? <Loader2 className="mx-auto h-5 w-5 animate-spin" /> : "Verify & Continue"}
                 </button>
@@ -290,17 +340,17 @@ export default function LoginPage() {
                   <div className="mb-4 flex items-center gap-3">
                     <Wallet className="h-6 w-6 text-[#3A7D44] dark:text-[#5CB86A]" />
                     <div>
-                      <p className="font-semibold text-[#1B3A20] dark:text-[#E8F0EA]">Connect Freighter Wallet</p>
-                      <p className="text-xs text-[#8A9E8F] dark:text-[#6A8A70]">For lenders, insurers &amp; investors</p>
+                      <p className="text-[0.95rem] font-semibold text-[#1B3A20] dark:text-[#E8F0EA]">Connect Freighter Wallet</p>
+                      <p className="text-sm text-[#8A9E8F] dark:text-[#6A8A70]">For lenders, insurers &amp; investors</p>
                     </div>
                   </div>
-                  <p className="mb-4 text-sm text-[#5A7A60] dark:text-[#9AB0A0]">
+                  <p className="mb-4 text-[0.95rem] text-[#5A7A60] dark:text-[#9AB0A0]">
                     Connect a wallet to access investor tools and settlement features.
                   </p>
                   <button
                     onClick={handleWalletConnect}
                     disabled={isLoading}
-                    className="w-full rounded-xl bg-[#3A7D44] px-4 py-3.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50 dark:bg-[#5CB86A] dark:text-[#0F1A12]"
+                    className="w-full rounded-xl bg-[#3A7D44] px-4 py-4 text-[0.95rem] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50 dark:bg-[#5CB86A] dark:text-[#0F1A12]"
                   >
                     {isLoading ? (
                       <span className="flex items-center justify-center gap-2">
@@ -312,7 +362,7 @@ export default function LoginPage() {
                     )}
                   </button>
                 </div>
-                <p className="mt-3 text-center text-xs text-[#8A9E8F] dark:text-[#6A8A70]">
+                <p className="mt-3 text-center text-sm text-[#8A9E8F] dark:text-[#6A8A70]">
                   Don&apos;t have Freighter?{" "}
                   <a
                     href="https://freighter.app"
@@ -345,10 +395,10 @@ export default function LoginPage() {
           >
             <Shield className="mt-0.5 h-4 w-4 shrink-0 text-[#3A7D44] dark:text-[#5CB86A]" />
             <div>
-              <p className="text-xs font-medium text-[#1B3A20] dark:text-[#E8F0EA]">
+              <p className="text-sm font-medium text-[#1B3A20] dark:text-[#E8F0EA]">
                 Your personal information stays private.
               </p>
-              <p className="mt-0.5 text-[11px] leading-relaxed text-[#8A9E8F] dark:text-[#6A8A70]">
+              <p className="mt-0.5 text-xs leading-relaxed text-[#8A9E8F] dark:text-[#6A8A70]">
                 We never share your data without your consent.
               </p>
             </div>
@@ -356,7 +406,7 @@ export default function LoginPage() {
 
           {/* Sign up link */}
           <div className="mt-6 text-center">
-            <p className="text-sm text-[#8A9E8F] dark:text-[#6A8A70]">
+            <p className="text-[0.95rem] text-[#8A9E8F] dark:text-[#6A8A70]">
               Don&apos;t have an account?{" "}
               <Link href="/register" className="font-semibold text-[#3A7D44] hover:underline dark:text-[#5CB86A]">
                 Sign up
@@ -364,56 +414,6 @@ export default function LoginPage() {
             </p>
           </div>
         </div>
-      </div>
-
-      {/* ── Right — Visual trust panel ── */}
-      <div className="relative hidden min-h-screen w-full items-center justify-center overflow-hidden bg-gradient-to-br from-[#E8F5EA] via-[#F0FAF2] to-[#F7F5EE] lg:flex lg:w-[54%] dark:from-[#0A120C] dark:via-[#0F1A12] dark:to-[#122016]">
-        {/* Decorative background pattern */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-[0.08]"
-          style={{
-            backgroundImage: "url(/assets/abstract-background/pattern_organic_growth.png)",
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-          }}
-        />
-
-        {/* Illustration */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.6, delay: 0.15, ease: easeOutExpo }}
-          className="relative z-10 mx-auto w-full max-w-md px-8"
-        >
-          <div className="relative aspect-square">
-            <Image
-              src="/assets/signin-login-imgs/auth_login_verified_seedling.png"
-              alt="Secure access to your trust certificates"
-              fill
-              sizes="500px"
-              className="object-contain"
-              priority
-            />
-          </div>
-        </motion.div>
-
-        {/* Caption */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.35, ease: easeOutExpo }}
-          className="absolute bottom-10 left-0 right-0 text-center"
-        >
-          <p className="text-sm font-medium text-[#3A6A42] dark:text-[#7AAA80]">
-            Your trust, always accessible
-          </p>
-          <p className="mt-1 text-xs text-[#5A7A60]/70 dark:text-[#9AB0A0]/60">
-            Farmers: sign in with Google or phone — no wallet needed.
-            <br />
-            Lenders: connect Freighter and complete KYC.
-          </p>
-        </motion.div>
       </div>
     </div>
   );
