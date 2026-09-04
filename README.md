@@ -130,6 +130,19 @@ cargo build
 
 ---
 
+##  Deployed Contracts (Testnet)
+
+| Contract | Address | Description |
+|----------|---------|-------------|
+| **VYC (Verifiable Yield Certificate)** | `CDLY6BO6RS7B43UFMS45FUELGQHDVMTLHR2SHFVUHWYJZ5BFJXYXUW27` | Tokenized certificate representing expected harvest value. Minted on-chain via the VYC minting frontend. |
+| **Parametric Insurance (Volatility Shield)** | `CAP5F2UJVEIDRIQFKN4T2JVW7IZC6KARIJXDV65IZEF7VYOSKRDGWXJU` | Automated insurance payouts triggered by weather conditions (e.g., drought). Deployed and initialized on testnet. |
+
+Both contracts are live on **Stellar Testnet**.
+- [View VYC Contract on Stellar Expert](https://stellar.expert/explorer/testnet/contract/CDLY6BO6RS7B43UFMS45FUELGQHDVMTLHR2SHFVUHWYJZ5BFJXYXUW27)
+- [View Insurance Contract on Stellar Expert](https://stellar.expert/explorer/testnet/contract/CAP5F2UJVEIDRIQFKN4T2JVW7IZC6KARIJXDV65IZEF7VYOSKRDGWXJU)
+
+---
+
 ##  Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
