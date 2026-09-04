@@ -10,22 +10,36 @@ import { useFreighter } from "../hooks/useFreighter";
 
 const easeOutExpo = [0.21, 0.47, 0.32, 0.98] as const;
 
-type View = "choose" | "farmer-phone" | "farmer-password" | "lender-wallet";
+type View = "choose" | "farmer-phone" | "lender-wallet";
 
 export default function LoginPage() {
   const router = useRouter();
   const [view, setView] = useState<View>("choose");
   const [phone, setPhone] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+  const [secretWord, setSecretWord] = useState("");
+  const [showSecret, setShowSecret] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { address, isConnected, isLoading: walletLoading, error: walletError, connect } = useFreighter();
 
   async function handlePhoneLogin() {
-    if (!phone || phone.length < 10 || !password) return;
+    if (!phone || phone.length < 10 || !secretWord) return;
     setIsLoading(true);
     await new Promise((r) => setTimeout(r, 1500));
-    router.push("/onboarding");
+    router.push("/dashboard");
+    setIsLoading(false);
+  }
+
+  async function handleGoogleLogin() {
+    setIsLoading(true);
+    await new Promise((r) => setTimeout(r, 1500));
+    router.push("/dashboard");
+    setIsLoading(false);
+  }
+
+  async function handleFacebookLogin() {
+    setIsLoading(true);
+    await new Promise((r) => setTimeout(r, 1500));
+    router.push("/dashboard");
     setIsLoading(false);
   }
 
@@ -34,16 +48,29 @@ export default function LoginPage() {
     await connect();
     setIsLoading(false);
     if (isConnected || address) {
-      router.push("/kyc");
+      router.push("/dashboard");
     }
   }
 
-  const isValid = phone.length >= 10 && password.length >= 1;
+  const phoneValid = phone.length >= 10 && secretWord.length >= 1;
 
   return (
     <div className="flex min-h-screen flex-col lg:flex-row">
       {/* ── Left — Visual trust panel ── */}
       <div className="relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-[#E8F5EA] via-[#F0FAF2] to-[#F7F5EE] lg:w-1/2 dark:from-[#0A120C] dark:via-[#0F1A12] dark:to-[#122016]">
+        {/* Faint abstract line pattern */}
+        <svg className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.07]" aria-hidden>
+          <defs>
+            <pattern id="login-lines" width="60" height="60" patternUnits="userSpaceOnUse">
+              <circle cx="30" cy="30" r="1.5" fill="currentColor" className="text-[#3A7D44] dark:text-[#5CB86A]" />
+              <line x1="0" y1="30" x2="60" y2="30" stroke="currentColor" strokeWidth="0.5" className="text-[#3A7D44] dark:text-[#5CB86A]" />
+              <line x1="30" y1="0" x2="30" y2="60" stroke="currentColor" strokeWidth="0.5" className="text-[#3A7D44] dark:text-[#5CB86A]" />
+              <circle cx="30" cy="30" r="12" fill="none" stroke="currentColor" strokeWidth="0.4" className="text-[#3A7D44] dark:text-[#5CB86A]" />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#login-lines)" />
+        </svg>
+
         {/* Logo — top-left corner, tight to edge */}
         <Link href="/" className="absolute left-4 top-4 z-20 inline-flex items-center gap-2 sm:left-6 sm:top-6">
           <Image
@@ -55,7 +82,7 @@ export default function LoginPage() {
           />
         </Link>
 
-        {/* 3D Illustration — 2x size */}
+        {/* 3D Illustration */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -85,7 +112,7 @@ export default function LoginPage() {
             Your trust, always accessible
           </p>
           <p className="mt-1.5 text-sm leading-relaxed text-[#5A7A60]/70 dark:text-[#9AB0A0]/60">
-            Farmers: sign in with phone — no wallet needed.
+            Farmers: sign in with phone or Google — no wallet needed.
             <br />
             Lenders: connect Freighter and complete KYC.
           </p>
@@ -106,7 +133,7 @@ export default function LoginPage() {
         />
 
         <div className="relative mx-auto w-full max-w-[420px]">
-          {/* Back button — top-left of right panel */}
+          {/* Back button */}
           <motion.button
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -125,9 +152,7 @@ export default function LoginPage() {
             transition={{ duration: 0.5, ease: easeOutExpo }}
             className="text-[2.25rem] font-bold leading-[1.02] text-[#1B3A20] dark:text-[#E8F0EA] sm:text-[2.75rem]"
           >
-            Build your farming
-            <br />
-            track record
+            Welcome back
           </motion.h1>
 
           <motion.p
@@ -148,21 +173,56 @@ export default function LoginPage() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -12 }}
                 transition={{ duration: 0.35, ease: easeOutExpo }}
-                className="mt-8"
+                className="mt-8 space-y-3"
               >
-                {/* Farmer section */}
-                <div className="space-y-3">
-                  <button
-                    onClick={() => setView("farmer-phone")}
-                    className="flex w-full items-center gap-3 rounded-xl border border-[#3A7D44] bg-white px-4 py-4 text-left text-[0.95rem] font-medium text-[#1B3A20] transition-all hover:bg-[#F0FAF2] dark:border-[#5CB86A] dark:bg-[#162018] dark:text-[#E8F0EA] dark:hover:bg-[#1A2A1E]"
-                  >
-                    <Phone className="h-5 w-5 shrink-0 text-[#3A7D44] dark:text-[#5CB86A]" />
-                    Continue with phone number
-                  </button>
+                {/* Google */}
+                <button
+                  onClick={handleGoogleLogin}
+                  disabled={isLoading}
+                  className="flex w-full items-center justify-center gap-3 rounded-xl border border-[#D8D5CC] bg-white px-4 py-4 text-[0.95rem] font-medium text-[#1B3A20] transition-all hover:border-[#3A7D44] hover:shadow-sm disabled:opacity-50 dark:border-[#2A3D2E] dark:bg-[#162018] dark:text-[#E8F0EA] dark:hover:border-[#5CB86A]"
+                >
+                  <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24">
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                  </svg>
+                  Sign in with Google
+                </button>
+
+                {/* Facebook */}
+                <button
+                  onClick={handleFacebookLogin}
+                  disabled={isLoading}
+                  className="flex w-full items-center justify-center gap-3 rounded-xl border border-[#D8D5CC] bg-white px-4 py-4 text-[0.95rem] font-medium text-[#1B3A20] transition-all hover:border-[#3A7D44] hover:shadow-sm disabled:opacity-50 dark:border-[#2A3D2E] dark:bg-[#162018] dark:text-[#E8F0EA] dark:hover:border-[#5CB86A]"
+                >
+                  <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="#1877F2">
+                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                  </svg>
+                  Sign in with Facebook
+                </button>
+
+                {/* Divider */}
+                <div className="relative py-2">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-[#D8D5CC] dark:border-[#2A3D2E]" />
+                  </div>
+                  <div className="relative flex justify-center text-xs">
+                    <span className="bg-[#F7F5EE] px-3 text-[#8A9E8F] dark:bg-[#0F1A12] dark:text-[#6A8A70]">or</span>
+                  </div>
                 </div>
 
+                {/* Continue with phone */}
+                <button
+                  onClick={() => setView("farmer-phone")}
+                  className="flex w-full items-center gap-3 rounded-xl border border-[#3A7D44] bg-white px-4 py-4 text-left text-[0.95rem] font-medium text-[#1B3A20] transition-all hover:bg-[#F0FAF2] dark:border-[#5CB86A] dark:bg-[#162018] dark:text-[#E8F0EA] dark:hover:bg-[#1A2A1E]"
+                >
+                  <Phone className="h-5 w-5 shrink-0 text-[#3A7D44] dark:text-[#5CB86A]" />
+                  Continue with phone number
+                </button>
+
                 {/* Divider — Farmer vs Lender */}
-                <div className="relative py-5">
+                <div className="relative py-3">
                   <div className="absolute inset-0 flex items-center">
                     <div className="w-full border-t border-[#D8D5CC] dark:border-[#2A3D2E]" />
                   </div>
@@ -228,38 +288,38 @@ export default function LoginPage() {
                   </div>
                 </div>
                 <div>
-                  <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-[#1B3A20] dark:text-[#E8F0EA]">
-                    Password or secret word
+                  <label htmlFor="secretWord" className="mb-1.5 block text-sm font-medium text-[#1B3A20] dark:text-[#E8F0EA]">
+                    Secret word or phrase
                   </label>
                   <div className="relative">
                     <svg className="absolute left-3.5 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-[#8A9E8F] dark:text-[#6A8A70]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
                     <input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Your sync phrase or password"
+                      id="secretWord"
+                      type={showSecret ? "text" : "password"}
+                      value={secretWord}
+                      onChange={(e) => setSecretWord(e.target.value)}
+                      placeholder="Your security phrase"
                       className="w-full rounded-xl border border-[#D8D5CC] bg-white py-3 pl-11 pr-11 text-[0.95rem] text-[#1B3A20] placeholder:text-[#B0ADA5] focus:border-[#3A7D44] focus:outline-none focus:ring-2 focus:ring-[#3A7D44]/20 dark:border-[#2A3D2E] dark:bg-[#162018] dark:text-[#E8F0EA] dark:placeholder:text-[#4A6A50] dark:focus:border-[#5CB86A] dark:focus:ring-[#5CB86A]/20"
                     />
                     <button
                       type="button"
-                      onClick={() => setShowPassword(!showPassword)}
+                      onClick={() => setShowSecret(!showSecret)}
                       className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#8A9E8F] hover:text-[#5A7A60] dark:text-[#6A8A70] dark:hover:text-[#9AB0A0]"
                       tabIndex={-1}
                     >
-                      {showPassword ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
+                      {showSecret ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
                     </button>
                   </div>
                 </div>
                 <button
                   onClick={handlePhoneLogin}
-                  disabled={isLoading || !isValid}
+                  disabled={isLoading || !phoneValid}
                   className="w-full rounded-xl bg-[#3A7D44] px-4 py-4 text-[0.95rem] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40 dark:bg-[#5CB86A] dark:text-[#0F1A12]"
                 >
                   {isLoading ? <Loader2 className="mx-auto h-5 w-5 animate-spin" /> : "Sign In"}
                 </button>
                 <button
-                  onClick={() => { setView("choose"); setPhone(""); setPassword(""); }}
+                  onClick={() => { setView("choose"); setPhone(""); setSecretWord(""); }}
                   className="inline-flex items-center gap-1 text-sm text-[#8A9E8F] hover:text-[#3A7D44] dark:text-[#6A8A70] dark:hover:text-[#5CB86A]"
                 >
                   <ArrowLeft className="h-3.5 w-3.5" />
@@ -302,10 +362,10 @@ export default function LoginPage() {
                         {address}
                       </p>
                       <button
-                        onClick={() => router.push("/kyc")}
+                        onClick={() => router.push("/dashboard")}
                         className="w-full rounded-xl bg-[#3A7D44] px-4 py-4 text-[0.95rem] font-semibold text-white transition-opacity hover:opacity-90 dark:bg-[#5CB86A] dark:text-[#0F1A12]"
                       >
-                        Continue to KYC
+                        Go to Dashboard
                       </button>
                     </div>
                   ) : (
@@ -320,7 +380,7 @@ export default function LoginPage() {
                           Connecting...
                         </span>
                       ) : (
-                        "Connect Wallet & Continue"
+                        "Connect Wallet"
                       )}
                     </button>
                   )}
