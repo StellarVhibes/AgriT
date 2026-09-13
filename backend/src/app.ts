@@ -80,7 +80,9 @@ export async function startServer() {
   return fastify;
 }
 
-startServer().catch((err) => {
-  logger.error(err, 'Failed to start server');
-  process.exit(1);
-});
+if (process.env.NODE_ENV !== 'test') {
+  startServer().catch((err) => {
+    logger.error(err, 'Failed to start server');
+    process.exit(1);
+  });
+}

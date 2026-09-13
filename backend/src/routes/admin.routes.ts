@@ -8,7 +8,7 @@ import { VYC_STATUSES } from '../types/vyc.types.js';
 import { isAddress, isHexHash, isValidCrop, isValidExpectedYield, isValidRegion } from '../utils/validators.js';
 
 function isAuthorized(request: FastifyRequest): boolean {
-  if (!appConfig.adminApiToken) return true;
+  if (!appConfig.adminApiToken) return false;
   return request.headers['x-admin-token'] === appConfig.adminApiToken;
 }
 
@@ -19,7 +19,7 @@ function unauthorised(reply: FastifyReply) {
 /**
  * Admin/backend-only endpoints. These hold the protocol admin keypair and
  * submit `mint_vyc` / `update_status` on-chain after proof-of-activity
- * verification and scoring. Guarded by ADMIN_API_TOKEN when configured.
+ * verification and scoring. Guarded by the required ADMIN_API_TOKEN.
  */
 export async function registerAdminRoutes(fastify: FastifyInstance) {
   const contractService = createContractService(appConfig.stellarNetwork);
