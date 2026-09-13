@@ -65,6 +65,7 @@ pub enum MintError {
     ScoreOutOfRange = 3,
     InvalidYield = 4,
     InvalidActivityHash = 5,
+    AlreadyInitialized = 6,
 }
 
 // ─── Parametric Insurance Types ─────────────────────────────────────────────
@@ -133,10 +134,16 @@ pub struct AgriTrust;
 impl AgriTrust {
     // ── Admin ──────────────────────────────────────────────────────────────
 
-    pub fn init(env: Env, admin: Address) {
+    pub fn init(env: Env, admin: Address) -> Result<(), MintError> {
         admin.require_auth();
+
+        if env.storage().instance().has(&DataKey::Admin) {
+            return Err(MintError::AlreadyInitialized);
+        }
+
         env.storage().instance().set(&DataKey::Admin, &admin);
         env.storage().instance().set(&DataKey::VycCounter, &0u64);
+        Ok(())
     }
 
     pub fn get_admin(env: Env) -> Address {

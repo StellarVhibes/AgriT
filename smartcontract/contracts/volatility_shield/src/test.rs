@@ -32,6 +32,23 @@ fn test_init() {
 }
 
 #[test]
+fn test_init_cannot_reset_existing_contract() {
+    let (env, admin, contract_id) = setup();
+    env.mock_all_auths();
+
+    let client = AgriTrustClient::new(&env, &contract_id);
+    client.init(&admin);
+
+    let second_admin = Address::generate(&env);
+    assert!(matches!(
+        client.try_init(&second_admin),
+        Err(Ok(MintError::AlreadyInitialized))
+    ));
+    assert_eq!(client.get_admin(), admin);
+    assert_eq!(client.get_vyc_count(), 0);
+}
+
+#[test]
 fn test_mint_vyc_basic() {
     let (env, admin, contract_id) = setup();
     env.mock_all_auths();
@@ -52,6 +69,29 @@ fn test_mint_vyc_basic() {
 
     assert_eq!(id, 1);
     assert_eq!(client.get_vyc_count(), 1);
+}
+
+#[test]
+fn test_mint_vyc_rejects_non_admin() {
+    let (env, admin, contract_id) = setup();
+    env.mock_all_auths();
+
+    let client = AgriTrustClient::new(&env, &contract_id);
+    client.init(&admin);
+
+    let unauthorized = Address::generate(&env);
+    let farmer = Address::generate(&env);
+    let result = client.try_mint_vyc(
+        &unauthorized,
+        &farmer,
+        &75,
+        &50_000_000i128,
+        &symbol_short!("MAIZE"),
+        &symbol_short!("NGLA"),
+        &dummy_hash(&env),
+    );
+
+    assert!(matches!(result, Err(Ok(MintError::Unauthorized))));
 }
 
 #[test]
