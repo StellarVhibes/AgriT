@@ -68,6 +68,7 @@ export async function registerAuthRoutes(fastify: FastifyInstance) {
       name?: string;
       region?: string;
       crop?: string;
+      secretWord?: string;
     };
   }>('/auth/farmer/register', async (request, reply) => {
     const body = request.body ?? {};
@@ -97,6 +98,9 @@ export async function registerAuthRoutes(fastify: FastifyInstance) {
         error: `crop must be one of: ${VALID_CROPS.join(', ')}.`,
       });
     }
+    if (typeof body.secretWord !== 'string' || body.secretWord.trim().length < 2) {
+      return reply.code(400).send({ success: false, error: 'secretWord must be at least 2 characters.' });
+    }
 
     try {
       const result = await registerFarmer({
@@ -105,6 +109,7 @@ export async function registerAuthRoutes(fastify: FastifyInstance) {
         name: body.name.trim(),
         region: body.region.toUpperCase(),
         crop: body.crop.toUpperCase(),
+        secretWord: body.secretWord,
       });
 
       return reply.code(201).send({ success: true, data: result });
@@ -117,7 +122,7 @@ export async function registerAuthRoutes(fastify: FastifyInstance) {
   // ── Farmer Login ───────────────────────────────────────────────────────
 
   fastify.post<{
-    Body: { provider?: string; providerSubject?: string };
+    Body: { provider?: string; providerSubject?: string; secretWord?: string };
   }>('/auth/farmer/login', async (request, reply) => {
     const body = request.body ?? {};
 
@@ -130,10 +135,14 @@ export async function registerAuthRoutes(fastify: FastifyInstance) {
     if (typeof body.providerSubject !== 'string' || body.providerSubject.trim().length === 0) {
       return reply.code(400).send({ success: false, error: 'providerSubject is required.' });
     }
+    if (typeof body.secretWord !== 'string' || body.secretWord.trim().length < 2) {
+      return reply.code(400).send({ success: false, error: 'secretWord must be at least 2 characters.' });
+    }
 
     const result = await loginFarmer({
       provider: body.provider,
       providerSubject: body.providerSubject.trim(),
+      secretWord: body.secretWord,
     });
 
     if (!result) {
@@ -230,18 +239,41 @@ export async function registerAuthRoutes(fastify: FastifyInstance) {
   // ── Lender KYC Submit ──────────────────────────────────────────────────
 
   fastify.post<{
-    Body: { walletAddress?: string };
-  }>('/auth/lender/kyc', async (request, reply) => {
-    const body = request.body ?? {};
-
-    if (!isAddress(body.walletAddress)) {
-      return reply.code(400).send({
-        success: false,
-        error: 'walletAddress must be a valid Stellar G... address.',
-      });
+    Body: {
+      fullName?: string;
+      entityType?: string;
+      email?: string;
+      country?: string;
+    };
+  }>('/auth/lender/kyc', { preHandler: [authenticate] }, async (request, reply) => {
+    const session = (request as FastifyRequest & { session: { sub: string; role: string } }).session;
+    if (session.role !== 'lender') {
+      return reply.code(403).send({ success: false, error: 'This endpoint is for lenders only.' });
     }
 
-    const lender = updateLenderKyc(body.walletAddress, 'pending');
+    const body = request.body ?? {};
+    if (
+      typeof body.fullName !== 'string' ||
+      typeof body.entityType !== 'string' ||
+      typeof body.email !== 'string' ||
+      typeof body.country !== 'string' ||
+      !body.fullName.trim() ||
+      !body.entityType.trim() ||
+      !body.email.includes('@') ||
+      !body.country.trim()
+    ) {
+      return reply.code(400).send({ success: false, error: 'Complete KYC details are required.' });
+    }
+
+    const lenderProfile = getLenderProfile(session.sub);
+    const lender = lenderProfile
+      ? updateLenderKyc(lenderProfile.walletAddress, 'pending', {
+          fullName: body.fullName.trim(),
+          entityType: body.entityType.trim(),
+          email: body.email.trim(),
+          country: body.country.trim(),
+        })
+      : null;
     if (!lender) {
       return reply.code(404).send({
         success: false,

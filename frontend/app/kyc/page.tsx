@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, ArrowLeft, CheckCircle2, Wallet, ShieldCheck } from "lucide-react";
 import { useFreighter } from "../hooks/useFreighter";
+import { apiRequest, getSessionToken, storeSessionToken } from "../lib/api";
 
 const easeOutExpo = [0.21, 0.47, 0.32, 0.98] as const;
 
@@ -23,6 +24,7 @@ export default function KycPage() {
   const router = useRouter();
   const [step, setStep] = useState<"wallet" | "kyc" | "done">("wallet");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const { address, isConnected, isLoading: walletLoading, error: walletError, connect } = useFreighter();
 
   const [form, setForm] = useState({
@@ -39,9 +41,31 @@ export default function KycPage() {
   async function handleSubmitKyc() {
     if (!form.fullName || !form.entityType || !form.email) return;
     setIsSubmitting(true);
-    await new Promise((r) => setTimeout(r, 2000));
-    setStep("done");
-    setIsSubmitting(false);
+    setSubmitError(null);
+    try {
+      let token = getSessionToken();
+      if (!token && address) {
+        const onboarding = await apiRequest<{ sessionToken: string }>("/auth/lender/onboard", {
+          method: "POST",
+          body: { walletAddress: address },
+        });
+        token = onboarding.sessionToken;
+        storeSessionToken(token);
+      }
+
+      if (!token) throw new Error("Connect your lender wallet before submitting KYC.");
+
+      await apiRequest<{ lenderId: string; kycStatus: string }>("/auth/lender/kyc", {
+        method: "POST",
+        token,
+        body: form,
+      });
+      setStep("done");
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "KYC submission failed");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -237,6 +261,7 @@ export default function KycPage() {
                   </div>
 
                   <div className="space-y-4">
+                    {submitError ? <div className="rounded-xl bg-[#C4713A]/10 p-3 text-sm text-[#C4713A]">{submitError}</div> : null}
                     <div>
                       <label htmlFor="fullName" className="mb-1.5 block text-sm font-medium text-[#1B3A20] dark:text-[#E8F0EA]">
                         Full name / Organization name

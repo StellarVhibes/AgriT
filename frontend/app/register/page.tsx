@@ -19,7 +19,7 @@ import {
   ChevronRight,
   ChevronLeft,
 } from "lucide-react";
-import { useFreighter } from "../hooks/useFreighter";
+import { apiRequest, storeSessionToken } from "../lib/api";
 
 const easeOutExpo = [0.21, 0.47, 0.32, 0.98] as const;
 
@@ -47,6 +47,7 @@ export default function RegisterPage() {
   const [step, setStep] = useState<RegStep>("details");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   // Step 1 — Your details
   const [fullName, setFullName] = useState("");
@@ -70,23 +71,34 @@ export default function RegisterPage() {
   async function handleComplete() {
     if (!kycValid) return;
     setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 1500));
-    router.push("/dashboard");
-    setIsLoading(false);
+    setAuthError(null);
+    try {
+      const result = await apiRequest<{ sessionToken: string }>("/auth/farmer/register", {
+        method: "POST",
+        body: {
+          provider: "phone",
+          providerSubject: phone,
+          name: fullName,
+          region,
+          crop,
+          secretWord,
+        },
+      });
+      storeSessionToken(result.sessionToken);
+      router.push("/dashboard");
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : "Registration failed");
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   async function handleGoogleSignUp() {
-    setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 1500));
-    router.push("/dashboard");
-    setIsLoading(false);
+    setAuthError("Google sign-up is not configured yet. Use phone sign-up.");
   }
 
   async function handleFacebookSignUp() {
-    setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 1500));
-    router.push("/dashboard");
-    setIsLoading(false);
+    setAuthError("Facebook sign-up is not configured yet. Use phone sign-up.");
   }
 
   return (
@@ -207,6 +219,7 @@ export default function RegisterPage() {
                 <p className="mt-3 text-lg text-[#5A7A60] dark:text-[#9AB0A0]">
                   Create your account to get started with AgriTrust.
                 </p>
+                {authError ? <p className="mt-4 rounded-xl bg-[#C4713A]/10 p-3 text-sm text-[#C4713A]">{authError}</p> : null}
 
                 <div className="mt-8 space-y-4">
                   {/* Full Name */}

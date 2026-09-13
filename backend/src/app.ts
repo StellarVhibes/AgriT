@@ -38,7 +38,7 @@ export async function buildServer() {
       farmerProfile: 'GET /farmer/me  (auth: Bearer token)',
       lenderOnboard: 'POST /auth/lender/onboard  body: { walletAddress }',
       lenderLogin: 'POST /auth/lender/login  body: { walletAddress }',
-      lenderKyc: 'POST /auth/lender/kyc  body: { walletAddress }',
+       lenderKyc: 'POST /auth/lender/kyc  auth: Bearer token  body: { fullName, entityType, email, country }',
       lenderProfile: 'GET /lender/me  (auth: Bearer token)',
     },
     docs: 'See backend/README.md in the repo for full usage.',

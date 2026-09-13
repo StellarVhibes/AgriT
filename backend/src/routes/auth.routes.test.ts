@@ -29,6 +29,7 @@ describe('Auth routes', () => {
       name: 'Adewale Okafor',
       region: 'NG-OYO',
       crop: 'MAIZE',
+      secretWord: 'secure-phrase',
     };
 
     it('registers a new farmer and returns wallet address', async () => {
@@ -109,16 +110,17 @@ describe('Auth routes', () => {
         payload: {
           provider: 'google',
           providerSubject: 'google-sub-login-test',
-          name: 'Test Farmer',
-          region: 'NG-OYO',
-          crop: 'MAIZE',
+           name: 'Test Farmer',
+           region: 'NG-OYO',
+           crop: 'MAIZE',
+           secretWord: 'secure-phrase',
         },
       });
 
       const res = await server.inject({
         method: 'POST',
         url: '/auth/farmer/login',
-        payload: { provider: 'google', providerSubject: 'google-sub-login-test' },
+        payload: { provider: 'google', providerSubject: 'google-sub-login-test', secretWord: 'secure-phrase' },
       });
 
       expect(res.statusCode).toBe(200);
@@ -134,7 +136,7 @@ describe('Auth routes', () => {
       const res = await server.inject({
         method: 'POST',
         url: '/auth/farmer/login',
-        payload: { provider: 'google', providerSubject: 'nonexistent' },
+        payload: { provider: 'google', providerSubject: 'nonexistent', secretWord: 'secure-phrase' },
       });
 
       expect(res.statusCode).toBe(404);
@@ -151,16 +153,17 @@ describe('Auth routes', () => {
         payload: {
           provider: 'phone',
           providerSubject: 'phone-me-test',
-          name: 'Kemi Adekunle',
-          region: 'NG-ON',
-          crop: 'COCOA',
+           name: 'Kemi Adekunle',
+           region: 'NG-ON',
+           crop: 'COCOA',
+           secretWord: 'secure-phrase',
         },
       });
 
       const loginRes = await server.inject({
         method: 'POST',
         url: '/auth/farmer/login',
-        payload: { provider: 'phone', providerSubject: 'phone-me-test' },
+        payload: { provider: 'phone', providerSubject: 'phone-me-test', secretWord: 'secure-phrase' },
       });
       const loginBody = JSON.parse(loginRes.payload);
 
@@ -271,12 +274,14 @@ describe('Auth routes', () => {
   describe('POST /auth/lender/kyc', () => {
     it('submits KYC for an onboarded lender', async () => {
       const wallet = fakeWallet();
-      await server.inject({ method: 'POST', url: '/auth/lender/onboard', payload: { walletAddress: wallet } });
+      const onboardRes = await server.inject({ method: 'POST', url: '/auth/lender/onboard', payload: { walletAddress: wallet } });
+      const onboardBody = JSON.parse(onboardRes.payload);
 
       const res = await server.inject({
         method: 'POST',
         url: '/auth/lender/kyc',
-        payload: { walletAddress: wallet },
+        headers: { authorization: `Bearer ${onboardBody.data.sessionToken}` },
+        payload: { fullName: 'Adewale Capital', entityType: 'Impact Fund', email: 'kyc@example.com', country: 'Nigeria' },
       });
 
       expect(res.statusCode).toBe(200);
@@ -285,14 +290,13 @@ describe('Auth routes', () => {
     });
 
     it('returns 404 for unknown wallet', async () => {
-      const wallet = fakeWallet();
       const res = await server.inject({
         method: 'POST',
         url: '/auth/lender/kyc',
-        payload: { walletAddress: wallet },
+        payload: { fullName: 'Unknown', entityType: 'Impact Fund', email: 'kyc@example.com', country: 'Nigeria' },
       });
 
-      expect(res.statusCode).toBe(404);
+      expect(res.statusCode).toBe(401);
     });
   });
 

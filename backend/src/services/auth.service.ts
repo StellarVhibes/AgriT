@@ -1,5 +1,6 @@
 import { Keypair } from '@stellar/stellar-sdk';
-import type { AuthProvider, FarmerProfile, LenderProfile, KycStatus } from '../types/auth.types.js';
+import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
+import type { AuthProvider, FarmerProfile, KycSubmission, LenderProfile, KycStatus } from '../types/auth.types.js';
 import { AUTH_PROVIDERS, KYC_STATUSES } from '../types/auth.types.js';
 import { logger } from '../utils/logger.js';
 
@@ -75,12 +76,29 @@ export interface RegisterFarmerInput {
   name: string;
   region: string;
   crop: string;
+  secretWord: string;
 }
 
 export interface RegisterFarmerResult {
   farmerId: string;
   walletAddress: string;
   isNew: boolean;
+  sessionToken: string;
+}
+
+function hashSecret(secret: string): string {
+  const salt = randomBytes(16);
+  const hash = scryptSync(secret, salt, 32);
+  return `${salt.toString('base64')}.${hash.toString('base64')}`;
+}
+
+function verifySecret(secret: string, encoded: string): boolean {
+  const [saltText, hashText] = encoded.split('.');
+  if (!saltText || !hashText) return false;
+
+  const expected = Buffer.from(hashText, 'base64');
+  const actual = scryptSync(secret, Buffer.from(saltText, 'base64'), expected.length);
+  return expected.length === actual.length && timingSafeEqual(expected, actual);
 }
 
 /**
@@ -92,10 +110,12 @@ export async function registerFarmer(input: RegisterFarmerInput): Promise<Regist
   const existing = farmerStore.get(compositeKey);
 
   if (existing) {
+    const sessionToken = await generateSessionToken(existing.id, 'farmer');
     return {
       farmerId: existing.id,
       walletAddress: existing.walletAddress,
       isNew: false,
+      sessionToken,
     };
   }
 
@@ -112,6 +132,7 @@ export async function registerFarmer(input: RegisterFarmerInput): Promise<Regist
     region: input.region,
     crop: input.crop,
     walletAddress: publicKey,
+    secretWordHash: hashSecret(input.secretWord),
     walletEncryptedSeed: encryptSeed(seed),
     createdAt: new Date().toISOString(),
   };
@@ -127,12 +148,14 @@ export async function registerFarmer(input: RegisterFarmerInput): Promise<Regist
     farmerId: farmer.id,
     walletAddress: publicKey,
     isNew: true,
+    sessionToken: await generateSessionToken(farmer.id, 'farmer'),
   };
 }
 
 export interface LoginFarmerInput {
   provider: AuthProvider;
   providerSubject: string;
+  secretWord: string;
 }
 
 export interface LoginFarmerResult {
@@ -149,7 +172,7 @@ export async function loginFarmer(input: LoginFarmerInput): Promise<LoginFarmerR
   const compositeKey = `${input.provider}:${input.providerSubject}`;
   const farmer = farmerStore.get(compositeKey);
 
-  if (!farmer) return null;
+  if (!farmer || !verifySecret(input.secretWord, farmer.secretWordHash)) return null;
 
   const token = await generateSessionToken(farmer.id, 'farmer');
 
@@ -228,7 +251,11 @@ export function onboardLender(input: OnboardLenderInput): OnboardLenderResult {
 /**
  * Submit or update KYC status for a lender.
  */
-export function updateLenderKyc(walletAddress: string, status: KycStatus): LenderProfile | null {
+export function updateLenderKyc(
+  walletAddress: string,
+  status: KycStatus,
+  kycSubmission?: KycSubmission,
+): LenderProfile | null {
   const lenderId = lenderByWallet.get(walletAddress);
   if (!lenderId) return null;
 
@@ -236,6 +263,7 @@ export function updateLenderKyc(walletAddress: string, status: KycStatus): Lende
   if (!lender) return null;
 
   lender.kycStatus = status;
+  if (kycSubmission) lender.kycSubmission = kycSubmission;
 
   logger.info({ lenderId: lender.id, status }, 'Lender KYC updated');
 

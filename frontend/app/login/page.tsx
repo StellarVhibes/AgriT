@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, ArrowLeft, Wallet, Shield, Phone, ChevronRight, Eye, EyeOff } from "lucide-react";
 import { useFreighter } from "../hooks/useFreighter";
+import { apiRequest, storeSessionToken } from "../lib/api";
 
 const easeOutExpo = [0.21, 0.47, 0.32, 0.98] as const;
 
@@ -19,32 +20,49 @@ export default function LoginPage() {
   const [secretWord, setSecretWord] = useState("");
   const [showSecret, setShowSecret] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
   const { address, isConnected, isLoading: walletLoading, error: walletError, connect } = useFreighter();
+
+  useEffect(() => {
+    if (view !== "lender-wallet" || !isConnected || !address) return;
+
+    void apiRequest<{ sessionToken: string }>("/auth/lender/onboard", {
+      method: "POST",
+      body: { walletAddress: address },
+    })
+      .then((result) => storeSessionToken(result.sessionToken))
+      .catch((error: unknown) => setAuthError(error instanceof Error ? error.message : "Wallet onboarding failed"));
+  }, [address, isConnected, view]);
 
   async function handlePhoneLogin() {
     if (!phone || phone.length < 10 || !secretWord) return;
     setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 1500));
-    router.push("/dashboard");
-    setIsLoading(false);
+    setAuthError(null);
+    try {
+      const result = await apiRequest<{ sessionToken: string }>("/auth/farmer/login", {
+        method: "POST",
+        body: { provider: "phone", providerSubject: phone, secretWord },
+      });
+      storeSessionToken(result.sessionToken);
+      router.push("/dashboard");
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : "Sign-in failed");
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   async function handleGoogleLogin() {
-    setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 1500));
-    router.push("/dashboard");
-    setIsLoading(false);
+    setAuthError("Google sign-in is not configured yet. Use phone sign-in.");
   }
 
   async function handleFacebookLogin() {
-    setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 1500));
-    router.push("/dashboard");
-    setIsLoading(false);
+    setAuthError("Facebook sign-in is not configured yet. Use phone sign-in.");
   }
 
   async function handleWalletConnect() {
     setIsLoading(true);
+    setAuthError(null);
     await connect();
     setIsLoading(false);
     if (isConnected || address) {
@@ -163,6 +181,7 @@ export default function LoginPage() {
           >
             Sign in simply. AgriTrust handles the Web3 complexity for you.
           </motion.p>
+          {authError ? <p className="mt-4 rounded-xl bg-[#C4713A]/10 p-3 text-sm text-[#C4713A]">{authError}</p> : null}
 
           {/* Auth actions */}
           <AnimatePresence mode="wait">
